@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grimoirelab-core"
-version = "0.1.0"
+version = "0.0.1"
 description = "Core of GrimoireLab"
 authors = [
     "GrimoireLab Developers"
@@ -33,12 +33,23 @@ classifiers = [
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/chaoss/grimoirelab-core/issues"
 
+[tool.poetry.scripts]
+grimoirelab = "grimoirelab.core.runner:grimoirelab"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 
-django = "^3.2"
+django = "^4.2"
+rq = "<1.12.0"
+django-rq = "^2.3.2"
+mysqlclient = "2.0.3"
+grimoirelab-toolkit = {version = "^0.4.1", allow-prereleases = true}
+perceval = {version = "^0.23.4", allow-prereleases = true}
 
+[tool.poetry.dev-dependencies]
+fakeredis = "^2.0.0"
+httpretty = "^1.1.4"
+flake8 = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core"]
