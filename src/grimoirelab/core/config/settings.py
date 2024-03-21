@@ -200,6 +200,15 @@ LOGGING = {
 
 STATIC_URL = '/static/'
 
+
+# UI static files will be copied to the next path when
+# 'collectstatic' is run.
+# If you are serving these files in a dedicated server, you will
+# need to copy them to their final destination.
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+
 #
 # Default primary key field type
 #

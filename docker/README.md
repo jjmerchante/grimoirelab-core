@@ -25,19 +25,34 @@ docker run --rm -d --net grimoire-net --name redisdb  redis:latest redis-server 
 
 #### Configure the database
 ```
-docker run --rm --net grimoire-net \                                                                           ✔ │ grimoirelab-core 3.10.9 🐍 
+docker run --rm --net grimoire-net \
     --env-file docker/grimoirelab.env \
     grimoirelab/grimoirelab-core \
     grimoirelab config setup
-
 ```
 
 #### Run a scheduler worker
 ```
-docker run --rm -d --net grimoire-net --name grimoirelab-worker-1 \
+docker run --rm -d --net grimoire-net --name grimoirelab-worker \
     --env-file docker/grimoirelab.env \
     grimoirelab/grimoirelab-core \
     grimoirelab run scheduler-worker
+```
+
+#### Run a pool of scheduler workers
+```
+docker run --rm -d --net grimoire-net --name grimoirelab-workerpool \
+    --env-file docker/grimoirelab.env \
+    grimoirelab/grimoirelab-core \
+    grimoirelab run workerpool --num-workers 20
+```
+
+#### Run the web server
+```
+docker run --rm -d --net grimoire-net --name grimoirelab-server \
+    --env-file docker/grimoirelab.env -p 8000:8000 \
+    grimoirelab/grimoirelab-core \
+    grimoirelab run server --dev
 ```
 
 #### Create a Git fetch task
