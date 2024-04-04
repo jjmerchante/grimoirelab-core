@@ -20,21 +20,15 @@
 #     Jose Javier Merchante <jjmerchante@bitergia.com>
 #
 
-TASK_PREFIX = 'grimoire:task:'
+from .backend import Backend
+from .git import Git
 
-Q_DEFAULT_JOBS = 'default'
 
-# TODO: Are these queues necessary?
-Q_ARCHIVE_JOBS = 'archive'
-Q_CREATION_JOBS = 'create'
-Q_RETRYING_JOBS = 'retry'
-Q_UPDATING_JOBS = 'update'
-Q_STORAGE_ITEMS = 'items'
+def get_backend(backend: str):
+    backend = backend.lower()
+    connectors = {"git": Git}  # TODO: Move this to a global?
 
-TIMEOUT = 3600 * 24
-
-DEFAULT_JOB_INTERVAL = 60 * 60 * 24  # In seconds
-
-WAIT_FOR_QUEUING = 10  # In seconds
-
-MAX_JOB_RETRIES = 3
+    try:
+        return connectors[backend]
+    except KeyError:
+        return Backend

@@ -97,6 +97,7 @@ class FetchTask(Task):
         RUNNING = 3
         COMPLETED = 4
         FAILED = 5
+        RECOVERY = 6
 
     backend = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     category = CharField(max_length=MAX_SIZE_CHAR_FIELD)

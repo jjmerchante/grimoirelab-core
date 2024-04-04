@@ -35,8 +35,7 @@ def create_job(request):
     category = 'commit'
     backend_args = {
         "gitpath": "/tmp/git/arthur.git/",
-        "uri": "https://github.com/chaoss/grimoirelab-kingarthur.git",
-        "from_date": "2015-03-01"
+        "uri": "https://github.com/chaoss/grimoirelab-kingarthur.git"
     }
 
     task = schedule_task(backend=backend,

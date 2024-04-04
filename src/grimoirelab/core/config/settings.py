@@ -237,3 +237,7 @@ RQ_QUEUES = {
         'DB': os.environ.get('GRIMOIRELAB_REDIS_DB', 0),
     }
 }
+
+RQ = {
+    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.PercevalJob'
+}
