@@ -33,8 +33,8 @@ logger = logging.getLogger('main')
 
 @click.group()
 @click.option('--config', 'cfg', envvar='GRIMOIRELAB_CONFIG',
-              help="Config module in Python path syntax,"
-                   "e.g. grimoirelab.core.config.settings.")
+              default='grimoirelab.core.config.settings', show_default=True,
+              help="Configuration module in Python path syntax")
 def fetch_task(cfg: str):
     """Command to create new tasks
 
@@ -56,7 +56,7 @@ def fetch_task(cfg: str):
     _ = get_wsgi_application()
 
 
-@fetch_task.command()
+@fetch_task.command('git')
 @click.argument('repository')
 def git_repository(repository: str):
     """Run a task to fetch a Git repository
@@ -68,15 +68,42 @@ def git_repository(repository: str):
 
     backend = 'git'
     category = 'commit'
-
-    base_path = os.path.expanduser('~/.perceval/repositories/')
-    processed_uri = repository.lstrip('/')
-    git_path = os.path.join(base_path, processed_uri) + '-git'
-
     backend_args = {
-        "gitpath": git_path,
         "uri": repository
     }
+
+    schedule_task(backend=backend,
+                  category=category,
+                  backend_args=backend_args)
+
+
+@fetch_task.command('github')
+@click.argument('category')
+@click.argument('owner')
+@click.argument('repository')
+@click.option('--api-token', 'api_token',
+              help="Token for fetching commits for this repository")
+def github_repository(
+        category: str,
+        owner: str,
+        repository: str,
+        api_token: str | None = None
+):
+    """Run a task to fetch a GitHub repository
+
+    It will create a FetchTask to fetch the data for the given GitHub
+    repository and store the results in a Redis Queue.
+    """
+    from grimoirelab.core.scheduler.scheduler import schedule_task
+
+    backend = 'github'
+    category = category
+    backend_args = {
+        "owner": owner,
+        "repository": repository
+    }
+    if api_token:
+        backend_args['api_token'] = api_token
 
     schedule_task(backend=backend,
                   category=category,

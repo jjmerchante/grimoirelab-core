@@ -22,30 +22,24 @@
 
 from __future__ import annotations
 
-import copy
-import datetime
 import logging
-import pickle
 
 from typing import TYPE_CHECKING
 from typing import Any
 
-import django_rq
+from cloudevents.conversion import to_json
 
 import perceval.backend
 import perceval.backends
 
-from rq.job import Job
-from grimoirelab_toolkit.datetime import str_to_datetime
+from chronicler.eventizer import eventize
+from rq.job import Job as JobRQ
 
-from .backends.utils import get_backend
-from .common import Q_STORAGE_ITEMS, MAX_JOB_RETRIES
 from .errors import NotFoundError
-from .models import FetchTask
+
 
 if TYPE_CHECKING:
     from logging import LogRecord
-    from redis import Redis
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +47,7 @@ logger = logging.getLogger(__name__)
 class JobLogHandler(logging.StreamHandler):
     """Handler class for the job logs"""
 
-    def __init__(self, job: Job) -> None:
+    def __init__(self, job: JobRQ) -> None:
         logging.StreamHandler.__init__(self)
         self.job = job
         self.job.meta['log'] = []
@@ -101,19 +95,28 @@ class JobResult:
         if self.summary:
             result['fetched'] = self.summary.fetched
             result['skipped'] = self.summary.skipped
-            result['min_updated_on'] = self.summary.min_updated_on.timestamp()
-            result['max_updated_on'] = self.summary.max_updated_on.timestamp()
-            result['last_updated_on'] = self.summary.last_updated_on.timestamp()
             result['last_uuid'] = self.summary.last_uuid
             result['min_offset'] = self.summary.min_offset
             result['max_offset'] = self.summary.max_offset
             result['last_offset'] = self.summary.last_offset
             result['extras'] = self.summary.extras
+            if self.summary.min_updated_on:
+                result['min_updated_on'] = self.summary.min_updated_on.timestamp()
+            else:
+                result['min_updated_on'] = None
+            if self.summary.max_updated_on:
+                result['max_updated_on'] = self.summary.max_updated_on.timestamp()
+            else:
+                result['max_updated_on'] = None
+            if self.summary.last_updated_on:
+                result['last_updated_on'] = self.summary.last_updated_on.timestamp()
+            else:
+                result['last_updated_on'] = None
 
         return result
 
 
-class PercevalJob(Job):
+class PercevalJob(JobRQ):
     """Class for wrapping Perceval jobs.
 
     Wrapper for running and executing Perceval backends. The items
@@ -137,41 +140,7 @@ class PercevalJob(Job):
         else:
             kwargs['func'] = cls.run
 
-        if 'on_success' not in kwargs or not kwargs['on_success']:
-            kwargs['on_success'] = cls.on_success_callback
-        if 'on_failure' not in kwargs or not kwargs['on_failure']:
-            kwargs['on_failure'] = cls.on_failure_callback
-
         return super().create(*args, **kwargs)
-
-    @classmethod
-    def enqueue_job(cls, task: FetchTask, scheduled_datetime: datetime.datetime | None = None) -> PercevalJob:
-        if not scheduled_datetime:
-            scheduled_datetime = datetime.datetime.now(datetime.timezone.utc)
-
-        job_args = cls._build_job_arguments(task)
-
-        # TODO: should result_ttl be always set to -1?
-        job = django_rq.get_queue(task.queue, job_class=PercevalJob).enqueue_at(
-            datetime=scheduled_datetime,
-            f=PercevalJob.run,
-            result_ttl=-1,
-            job_timeout=-1,
-            **job_args,
-        )
-
-        task.status = FetchTask.Status.ENQUEUED
-        task.age += 1
-        task.scheduled_datetime = scheduled_datetime
-        task.job_id = job.id
-        task.save()
-
-        logger.info(
-            f"Job #{job.id} (task: {job_args['task_id']}) ({job_args['backend']})"
-            f" enqueued in '{task.queue}' at {scheduled_datetime}"
-        )
-
-        return job
 
     @property
     def perceval_result(self) -> JobResult:
@@ -181,34 +150,6 @@ class PercevalJob(Job):
             self._perceval_result.summary = self._big.summary
 
         return self._perceval_result
-
-    @staticmethod
-    def _build_job_arguments(task: FetchTask) -> dict[str, Any]:
-        """Build the set of arguments required for running a job"""
-
-        job_args = {}
-        job_args['qitems'] = Q_STORAGE_ITEMS
-        job_args['task_id'] = task.task_id
-
-        # Backend parameters
-        job_args['backend'] = task.backend
-        backend_args = copy.deepcopy(task.backend_args)
-
-        if 'next_from_date' in backend_args:
-            backend_args['from_date'] = backend_args.pop('next_from_date')
-
-        if 'next_offset' in backend_args:
-            backend_args['offset'] = backend_args.pop('next_offset')
-
-        if 'from_date' in backend_args and isinstance(backend_args['from_date'], str):
-            backend_args['from_date'] = str_to_datetime(backend_args['from_date'])
-
-        job_args['backend_args'] = backend_args
-
-        # Category
-        job_args['category'] = task.category
-
-        return job_args
 
     def run(
         self,
@@ -248,9 +189,11 @@ class PercevalJob(Job):
                                                            backend_args,
                                                            category)
 
-        for item in self._big.items:
-            self._metadata(item)
-            self.connection.rpush(qitems, pickle.dumps(item))
+        events = eventize(backend, self._big.items)
+        for event in events:
+            self._metadata(event)
+            data = to_json(event)
+            self.connection.rpush(qitems, data)
 
         return self._perceval_result
 
@@ -285,84 +228,6 @@ class PercevalJob(Job):
             self._add_log_handler()
             return self.run(*self.args, **self.kwargs)
         finally:
-            self.meta['result'] = self.result
+            self.meta['result'] = self.perceval_result
             self.save_meta()
             self._remove_log_handler()
-
-    @staticmethod
-    def on_success_callback(job: Job, connection: Redis, result: Any, *args) -> None:
-        """Reschedule the job based on the interval defined by the task.
-
-        The new arguments for the job are obtained from the task
-        object. This way if the object is updated between runs it
-        will use the updated arguments.
-        """
-        try:
-            task = FetchTask.objects.get(job_id=job.id)
-        except FetchTask.DoesNotExist:
-            logger.error("FetchTask not found. Not rescheduling.")
-            return
-
-        task.last_execution = datetime.datetime.now(datetime.timezone.utc)
-        task.executions = task.executions + 1
-        task.failed = False
-        task.num_failures = 0
-
-        backend = get_backend(task.backend)
-
-        task.backend_args = backend.update_backend_args(result.summary, task.backend_args)
-
-        scheduled_datetime = datetime.datetime.now(
-            datetime.timezone.utc
-        ) + datetime.timedelta(seconds=task.interval)
-        task.status = FetchTask.Status.ENQUEUED
-        job = PercevalJob.enqueue_job(task, scheduled_datetime=scheduled_datetime)
-        task.job_id = job.id
-
-        task.save()
-
-    @staticmethod
-    def on_failure_callback(job: Job, connection: Redis, t: Any, value: Any, traceback: Any):
-        try:
-            task = FetchTask.objects.get(job_id=job.id)
-        except FetchTask.DoesNotExist:
-            logger.error("FetchTask not found. Not rescheduling.")
-            return
-
-        task.last_execution = datetime.datetime.now(datetime.timezone.utc)
-        task.num_failures += 1
-
-        logger.error(f"Job #{job.id} (task: {task.id}) failed; error: {value}")
-
-        task_max_retries = MAX_JOB_RETRIES
-
-        try:
-            bklass = perceval.backend.find_backends(perceval.backends)[0][task.backend]
-        except KeyError:
-            bklass = None
-
-        if not bklass or not bklass.has_resuming():
-            task.status = FetchTask.Status.FAILED
-            logger.error(f"Job #{job.id} (task: {task.id}) unable to resume; cancelled")
-        elif task.num_failures >= task_max_retries:
-            task.status = FetchTask.Status.FAILED
-            logger.error(f"Job #{job.id} (task: {task.id}) max retries reached; cancelled")
-        else:
-            logger.error(f"Job #{job.id} (task: {task.id}) failed but task will be resumed")
-
-            task.status = FetchTask.Status.RECOVERY
-            result = job.meta.get('result', None)
-
-            if result:
-                backend = get_backend(task.backend)
-                task.backend_args = backend.recovery_params(
-                    result.summary, task.backend_args
-                )
-
-            scheduled_datetime = datetime.datetime.now(
-                datetime.timezone.utc
-            ) + datetime.timedelta(seconds=60)  # TODO: error interval?
-            job = PercevalJob.enqueue_job(task, scheduled_datetime=scheduled_datetime)
-            task.job_id = job.id
-
-        task.save()

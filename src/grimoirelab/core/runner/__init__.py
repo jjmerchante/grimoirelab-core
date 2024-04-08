@@ -22,7 +22,7 @@
 
 import click
 
-from .utils import import_string
+from grimoirelab.core.runner.utils import import_string
 
 
 @click.group()
@@ -40,3 +40,7 @@ for cmd in map(
     )
 ):
     grimoirelab.add_command(cmd)
+
+
+if __name__ == "__main__":
+    grimoirelab()

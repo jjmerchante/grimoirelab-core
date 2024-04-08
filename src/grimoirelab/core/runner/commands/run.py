@@ -22,19 +22,18 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import os
-import pickle
 import time
 
 import click
 import django_rq
+from django.conf import settings
 
 from django.core.wsgi import get_wsgi_application
 from django.core import management
-
-from grimoirelab.core.scheduler.common import Q_STORAGE_ITEMS
 
 if TYPE_CHECKING:
     from click import Context
@@ -42,8 +41,8 @@ if TYPE_CHECKING:
 
 @click.group()
 @click.option('--config', 'cfg', envvar='GRIMOIRELAB_CONFIG',
-              help="Configuration module in Python path syntax,"
-                   "e.g. grimoirelab.core.config.settings")
+              default='grimoirelab.core.config.settings', show_default=True,
+              help="Configuration module in Python path syntax")
 @click.pass_context
 def run(ctx: Context, cfg: str):
     """Run a service.
@@ -170,11 +169,11 @@ def server(ctx: Context, devel: bool):
 
 def _items_consumer(connection):
     while True:
-        data = connection.lpop(Q_STORAGE_ITEMS)
+        data = connection.lpop(settings.Q_EVENTS)
         if not data:
             time.sleep(5)
             continue
-        yield pickle.loads(data)
+        yield json.loads(data)
 
 
 @run.command()
@@ -184,7 +183,7 @@ def test_consumer():
     connection = django_rq.get_connection()
     items = _items_consumer(connection)
     for i, item in enumerate(items):
-        print(i, item['uuid'])
+        print(i, item['id'])
 
 
 @run.command()
@@ -198,4 +197,4 @@ def opensearch_consumer(url, index):
     redis = django_rq.get_connection()
     elastic = ElasticSearch(url, index)
     items = _items_consumer(redis)
-    elastic.bulk_upload(items, field_id='uuid')
+    elastic.bulk_upload(items, field_id='id')

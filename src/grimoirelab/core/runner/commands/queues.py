@@ -28,8 +28,8 @@ from django.core.wsgi import get_wsgi_application
 
 @click.group()
 @click.option('--config', 'cfg', envvar='GRIMOIRELAB_CONFIG',
-              help="Config module in Python path syntax,"
-                   "e.g. grimoirelab.core.config.settings.")
+              default='grimoirelab.core.config.settings', show_default=True,
+              help="Configuration module in Python path syntax")
 def queues(cfg: str):
     """Manage the GrimoireLab Redis queues"""
 

@@ -22,11 +22,18 @@
 
 from .backend import Backend
 from .git import Git
+from .github import GitHub
+from .gitlab import GitLab
 
 
-def get_backend(backend: str):
+def get_scheduler_backend(backend: str):
     backend = backend.lower()
-    connectors = {"git": Git}  # TODO: Move this to a global?
+    # TODO: Move this to a global?
+    connectors = {
+        "git": Git,
+        "github": GitHub,
+        "gitlab": GitLab
+    }
 
     try:
         return connectors[backend]

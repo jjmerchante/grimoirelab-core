@@ -108,7 +108,7 @@ grimoirelab run scheduler-worker
 
 #### Create a Git fetch task
 ```
-grimoirelab fetch-task git-repository https://github.com/chaoss/grimoirelab.git
+grimoirelab fetch-task git https://github.com/chaoss/grimoirelab.git
 ```
 
 #### Consume items from the queue

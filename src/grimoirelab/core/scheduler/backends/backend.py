@@ -20,6 +20,15 @@
 #     Jose Javier Merchante <jjmerchante@bitergia.com>
 #
 
+from __future__ import annotations
+
+import copy
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from perceval.backend import Summary
+    from grimoirelab.core.scheduler.models import FetchTask
+
 
 class Backend:
     """Base Class for Scheduler Backends
@@ -30,29 +39,47 @@ class Backend:
     """
 
     @staticmethod
-    def update_backend_args(summary, backend_args):
+    def create_backend_args(task: FetchTask) -> dict[str, Any]:
         """
-        Update the arguments for this backend
+        Create the arguments for the given task. This is typically
+        for the first execution and does not depend on any previous
+        execution.
+
+        :param task: object that contains all the information for the task
+        :return: a dictionary containing the job arguments
+        """
+        job_args = {
+            'backend': task.backend,
+            'category': task.category,
+            'backend_args': copy.deepcopy(task.backend_args)
+        }
+        return job_args
+
+    @staticmethod
+    def update_backend_args(summary: Summary, backend_args: dict):
+        """
+        Update the arguments for the next execution based on the
+        result summary.
 
         :param summary: summary of the PercevalJob
-        :param backend_args: backend args for the job
+        :param backend_args: backend arguments for the job
         """
         if summary and summary.fetched > 0:
-            backend_args["next_from_date"] = summary.max_updated_on.isoformat()
+            backend_args["from_date"] = summary.max_updated_on.isoformat()
 
             if summary.max_offset:
-                backend_args["next_offset"] = summary.max_offset
+                backend_args["offset"] = summary.max_offset
 
         return backend_args
 
     @staticmethod
-    def recovery_params(summary, backend_args):
+    def recovery_params(summary: Summary, backend_args: dict):
         """
         Create or update the backend arguments for the recovery job.
-        By default, it does the same as create backend args.
+        By default, it does the same as update backend args.
 
         :param summary: summary of the PercevalJob
-        :param backend_args: backend args for the job
+        :param backend_args: backend arguments for the job
         :return:
         """
 

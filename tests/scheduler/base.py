@@ -22,7 +22,6 @@
 
 from django.test import TestCase
 from fakeredis import FakeStrictRedis
-from rq import push_connection, pop_connection
 
 
 class TestBaseRQ(TestCase):
@@ -33,11 +32,10 @@ class TestBaseRQ(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.conn = FakeStrictRedis()
-        push_connection(cls.conn)
 
     @classmethod
     def tearDownClass(cls):
-        conn = pop_connection()
+        pass
 
     def setUp(self):
         self.conn.flushdb()

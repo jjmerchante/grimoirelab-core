@@ -21,6 +21,7 @@
 #
 
 import datetime
+import json
 import logging
 import os
 import pickle
@@ -30,8 +31,7 @@ import tempfile
 import rq
 from django.test import TestCase
 
-from grimoirelab.core.scheduler.errors import NotFoundError
-from grimoirelab.core.scheduler.jobs import JobLogHandler, JobResult, PercevalJob, execute_perceval_job
+from grimoirelab.core.scheduler.jobs import JobLogHandler, JobResult, PercevalJob
 
 from .base import TestBaseRQ
 
@@ -42,7 +42,7 @@ class TestJobLogHandler(TestBaseRQ):
     def test_job_log_handler_init(self):
         """Tests whether the handler has initialized well"""
 
-        job_a = rq.job.Job()
+        job_a = rq.job.Job(connection=self.conn)
         meta_handler = JobLogHandler(job_a)
         self.assertEqual(meta_handler.job, job_a)
         self.assertListEqual(meta_handler.job.meta['log'], [])
@@ -50,7 +50,7 @@ class TestJobLogHandler(TestBaseRQ):
     def test_job_log_handler_emit(self):
         """Tests whether the handler catches the messages from the logger that handles"""
 
-        job_a = rq.job.Job()
+        job_a = rq.job.Job(connection=self.conn)
 
         # Create handler
         meta_handler = JobLogHandler(job_a)
@@ -112,142 +112,53 @@ class TestPercevalJob(TestBaseRQ):
         shutil.rmtree(self.tmp_path)
         super().tearDown()
 
-    def test_init(self):
-        """Test the initialization of the object"""
-
-        job = PercevalJob('1234567890', 'mytask', 'git',
-                          'commit', self.conn, 'items')
-
-        self.assertEqual(job.job_id, '1234567890')
-        self.assertEqual(job.task_id, 'mytask')
-        self.assertEqual(job.backend, 'git')
-        self.assertEqual(job.category, 'commit')
-        self.assertEqual(job.conn, self.conn)
-        self.assertEqual(job.qitems, 'items')
-
-        result = job.result
-        self.assertIsInstance(job.result, JobResult)
-        self.assertEqual(result.job_id, '1234567890')
-        self.assertEqual(result.task_id, 'mytask')
-        self.assertEqual(result.backend, 'git')
-        self.assertEqual(job.category, 'commit')
-        self.assertEqual(result.summary, None)
-
     def test_backend_not_found(self):
-        """Test if it raises an exception when a backend is not found"""
+        """Test if it fails when a backend is not found"""
 
-        with self.assertRaises(NotFoundError) as e:
-            _ = PercevalJob('1234567890', 'mytask',
-                            'mock_backend', 'acme-category',
-                            self.conn, 'items')
-            self.assertEqual(e.exception.element, 'mock_backend')
+        job_args = {
+            'qitems': 'items',
+            'task_id': 'mytask',
+            'backend': 'random-backend',
+            'category': 'unknown',
+            'backend_args': {}
+        }
+        q = rq.Queue('my-queue',
+                     job_class=PercevalJob,
+                     connection=self.conn,
+                     is_async=False)
+        job = q.enqueue(f=PercevalJob.run,
+                        result_ttl=100,
+                        job_timeout=120,
+                        job_id='job-backend-error',
+                        **job_args)
 
-    def test_run(self):
+        self.assertTrue(job.is_failed)
+
+    def test_git_job(self):
         """Test run method using the Git backend"""
 
-        job = PercevalJob('1234567890', 'mytask',
-                          'git', 'commit',
-                          self.conn, 'items')
-        args = {
-            'uri': 'http://example.com/',
-            'gitpath': os.path.join(self.dir, 'data/git_log.txt')
+        job_args = {
+            'qitems': 'items',
+            'task_id': 'mytask',
+            'backend': 'git',
+            'category': 'commit',
+            'backend_args': {
+                'uri': 'http://example.com/',
+                'gitpath': os.path.join(self.dir, 'data/git_log.txt')
+            }
         }
 
-        job.run(args)
+        q = rq.Queue('my-queue',
+                     job_class=PercevalJob,
+                     connection=self.conn,
+                     is_async=False)
+        job = q.enqueue(f=PercevalJob.run,
+                        result_ttl=100,
+                        job_timeout=120,
+                        job_id='job-id-1',
+                        **job_args)
 
-        result = job.result
-        self.assertIsInstance(job.result, JobResult)
-        self.assertEqual(result.job_id, '1234567890')
-        self.assertEqual(result.task_id, 'mytask')
-        self.assertEqual(result.backend, 'git')
-        self.assertEqual(result.category, 'commit')
-        self.assertEqual(result.summary.last_uuid, '1375b60d3c23ac9b81da92523e4144abc4489d4c')
-        self.assertEqual(result.summary.max_updated_on,
-                         datetime.datetime(2014, 2, 12, 6, 10, 39,
-                                           tzinfo=datetime.timezone.utc))
-        self.assertEqual(result.summary.last_updated_on,
-                         datetime.datetime(2012, 8, 14, 17, 30, 13,
-                                           tzinfo=datetime.timezone.utc))
-        self.assertEqual(result.summary.fetched, 9)
-        self.assertEqual(result.summary.last_offset, None)
-
-        commits = self.conn.lrange('items', 0, -1)
-        commits = [pickle.loads(c) for c in commits]
-        commits = [commit['data']['commit'] for commit in commits]
-
-        expected = ['456a68ee1407a77f3e804a30dff245bb6c6b872f',
-                    '51a3b654f252210572297f47597b31527c475fb8',
-                    'ce8e0b86a1e9877f42fe9453ede418519115f367',
-                    '589bb080f059834829a2a5955bebfd7c2baa110a',
-                    'c6ba8f7a1058db3e6b4bc6f1090e932b107605fb',
-                    'c0d66f92a95e31c77be08dc9d0f11a16715d1885',
-                    '7debcf8a2f57f86663809c58b5c07a398be7674c',
-                    '87783129c3f00d2c81a3a8e585eb86a47e39891a',
-                    'bc57a9209f096a130dcc5ba7089a8663f758a703']
-
-        self.assertEqual(commits, expected)
-
-    def test_metadata(self):
-        """Check if metadata parameters are correctly set"""
-
-        job = PercevalJob('1234567890', 'mytask',
-                          'git', 'commit',
-                          self.conn, 'items')
-        args = {
-            'uri': 'http://example.com/',
-            'gitpath': os.path.join(self.dir, 'data/git_log.txt')
-        }
-
-        job.run(args)
-
-        items = self.conn.lrange('items', 0, -1)
-        items = [pickle.loads(item) for item in items]
-
-        for item in items:
-            self.assertEqual(item['job_id'], '1234567890')
-
-    def test_run_not_found_parameters(self):
-        """Check if it fails when a required backend parameter is not found"""
-
-        job = PercevalJob('1234567890', 'mytask',
-                          'git', 'commit',
-                          self.conn, 'items')
-        args = {
-            'uri': 'http://example.com/'
-        }
-
-        with self.assertRaises(AttributeError) as e:
-            job.run(args)
-            self.assertEqual(e.exception.args[1], 'gitlog')
-
-
-class TestExecuteJob(TestBaseRQ):
-    """Unit tests for execute_perceval_job"""
-
-    def setUp(self):
-        self.tmp_path = tempfile.mkdtemp(prefix='grimoire_sched_')
-        self.dir = os.path.dirname(os.path.realpath(__file__))
-        super().setUp()
-
-    def tearDown(self):
-        shutil.rmtree(self.tmp_path)
-        super().tearDown()
-
-    def test_job(self):
-        """Execute Git backend job"""
-
-        backend_args = {
-            'uri': 'http://example.com/',
-            'gitpath': os.path.join(self.dir, 'data/git_log.txt')
-        }
-
-        q = rq.Queue('queue', is_async=False)  # noqa: W606
-
-        job = q.enqueue(execute_perceval_job,
-                        backend='git', backend_args=backend_args, category='commit',
-                        qitems='items', task_id='mytask')
-
-        result = job.return_value
+        result = job.return_value()
         self.assertEqual(result.job_id, job.get_id())
         self.assertEqual(result.task_id, 'mytask')
         self.assertEqual(result.backend, 'git')
@@ -260,42 +171,65 @@ class TestExecuteJob(TestBaseRQ):
                          datetime.datetime(2012, 8, 14, 17, 30, 13,
                                            tzinfo=datetime.timezone.utc))
         self.assertEqual(result.summary.total, 9)
-        self.assertEqual(result.summary.max_offset, None)
+        self.assertEqual(result.summary.max_offset, 'ce8e0b86a1e9877f42fe9453ede418519115f367')
 
-        commits = self.conn.lrange('items', 0, -1)
-        commits = [pickle.loads(c) for c in commits]
-        commits = [(commit['job_id'], commit['data']['commit']) for commit in commits]
+        events = self.conn.lrange('items', 0, -1)
+        events = [json.loads(e) for e in events]
 
-        expected = ['456a68ee1407a77f3e804a30dff245bb6c6b872f',
-                    '51a3b654f252210572297f47597b31527c475fb8',
-                    'ce8e0b86a1e9877f42fe9453ede418519115f367',
-                    '589bb080f059834829a2a5955bebfd7c2baa110a',
-                    'c6ba8f7a1058db3e6b4bc6f1090e932b107605fb',
-                    'c0d66f92a95e31c77be08dc9d0f11a16715d1885',
-                    '7debcf8a2f57f86663809c58b5c07a398be7674c',
-                    '87783129c3f00d2c81a3a8e585eb86a47e39891a',
-                    'bc57a9209f096a130dcc5ba7089a8663f758a703']
+        expected = [('2d85a883e0ef63ebf7fa40e372aed44834092592', 'org.grimoirelab.events.git.merge'),
+                    ('048d4869b8051acb0196d207c032210a980a7da4', 'org.grimoirelab.events.git.file.modified'),
+                    ('08db95eaf93968579a681701f347d94455ba6574', 'org.grimoirelab.events.git.file.replaced'),
+                    ('d7226f6c921128190f644fb659c61b3ef6360b91', 'org.grimoirelab.events.git.commit'),
+                    ('c0fd3bbdcbebf0232b010166d132cafecf5943f8', 'org.grimoirelab.events.git.file.modified'),
+                    ('16c99217dc3185c760cc64985271e2d5b2fbbe39', 'org.grimoirelab.events.git.commit'),
+                    ('ef282262cd85859b7ff2230828da6314b8230263', 'org.grimoirelab.events.git.file.replaced'),
+                    ('81df8221af2e63715ad3ff1f5fd41f9a1f2723e4', 'org.grimoirelab.events.git.commit'),
+                    ('8c5c6442870f9b0b7d36246c8b04d544adbc5c1c', 'org.grimoirelab.events.git.file.added'),
+                    ('504a6e9e5ba7dad1b275489b775d45cc8d77a790', 'org.grimoirelab.events.git.commit'),
+                    ('bb2012e4a54c60c7d91d628b6cd08bbca6a65ee8', 'org.grimoirelab.events.git.file.added'),
+                    ('e8460b1df2147e217e12cfa7404191af589f62cb', 'org.grimoirelab.events.git.commit'),
+                    ('93ea3e9c6b1f77f00894b1c361d7ee16a0490299', 'org.grimoirelab.events.git.file.deleted'),
+                    ('526635a03e351ba1e45964c45b695906a17f5493', 'org.grimoirelab.events.git.file.replaced'),
+                    ('e5ff829d3f1bacf6a6d3e36cd996a1308351f9a5', 'org.grimoirelab.events.git.commit'),
+                    ('5ee17ed5caf8cf3fc33e50ab3b46e2fe66d5cd71', 'org.grimoirelab.events.git.file.added'),
+                    ('caf05717b6c53143bd29a2140eb9c043aaefb255', 'org.grimoirelab.events.git.commit'),
+                    ('1c837b8c685112760eb5829c3da7c495f67e7c44', 'org.grimoirelab.events.git.file.replaced'),
+                    ('1375b60d3c23ac9b81da92523e4144abc4489d4c', 'org.grimoirelab.events.git.commit'),
+                    ('48335db7cb8e6db4367ac2543d0c92deb2a655ce', 'org.grimoirelab.events.git.file.added'),
+                    ('fa4a64cb04f8c9fef6c0143d874e90e7c5f4f3fc', 'org.grimoirelab.events.git.file.added'),
+                    ('9e5000b81d4d9554587df37f81bf64de10b23ec8', 'org.grimoirelab.events.git.file.added')]
 
-        for x in range(len(expected)):
-            item = commits[x]
-            self.assertEqual(item[0], result.job_id)
-            self.assertEqual(item[1], expected[x])
+        for i, event in enumerate(events):
+            self.assertEqual(event['id'], expected[i][0])
+            self.assertEqual(event['type'], expected[i][1])
+            self.assertEqual(event['source'], 'http://example.com/')
 
-    def test_job_no_result(self):
+    def test_git_job_no_result(self):
         """Execute a Git backend job that will not produce any results"""
 
-        backend_args = {
-            'uri': 'http://example.com/',
-            'gitpath': os.path.join(self.dir, 'data/git_log_empty.txt'),
-            'from_date': datetime.datetime(2020, 1, 1, 1, 1, 1)
+        job_args = {
+            'qitems': 'items',
+            'task_id': 'mytask',
+            'backend': 'git',
+            'category': 'commit',
+            'backend_args': {
+                'uri': 'http://example.com/',
+                'gitpath': os.path.join(self.dir, 'data/git_log_empty.txt'),
+                'from_date': datetime.datetime(2020, 1, 1, 1, 1, 1)
+            }
         }
 
-        q = rq.Queue('queue', is_async=False)  # noqa: W606
-        job = q.enqueue(execute_perceval_job,
-                        backend='git', backend_args=backend_args,
-                        category='commit', qitems='items', task_id='mytask')
+        q = rq.Queue('my-queue',
+                     job_class=PercevalJob,
+                     connection=self.conn,
+                     is_async=False)
+        job = q.enqueue(f=PercevalJob.run,
+                        result_ttl=100,
+                        job_timeout=120,
+                        job_id='job-id-1',
+                        **job_args)
 
-        result = job.return_value
+        result = job.return_value()
         self.assertEqual(result.job_id, job.get_id())
         self.assertEqual(result.task_id, 'mytask')
         self.assertEqual(result.backend, 'git')

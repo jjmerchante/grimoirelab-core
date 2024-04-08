@@ -20,16 +20,20 @@
 #     Jose Javier Merchante <jjmerchante@bitergia.com>
 #
 
+from django.conf import settings
 from django.db.models import (CharField,
                               DateTimeField,
                               JSONField,
                               IntegerChoices,
                               Model,
-                              PositiveIntegerField, IntegerField)
+                              PositiveIntegerField,
+                              IntegerField,
+                              ForeignKey,
+                              CASCADE)
+from django.utils.translation import gettext_lazy as _
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
-from .common import MAX_JOB_RETRIES, TASK_PREFIX, DEFAULT_JOB_INTERVAL
 
 # Innodb and utf8mb4 can only index 191 characters
 # For more information regarding this topic see:
@@ -92,12 +96,12 @@ class FetchTask(Task):
         Recurring tasks, that were successful, will be re-scheduled
         again (`ENQUEUED`), stating a new cycle.
         """
-        NEW = 1
-        ENQUEUED = 2
-        RUNNING = 3
-        COMPLETED = 4
-        FAILED = 5
-        RECOVERY = 6
+        NEW = 1, _("new")
+        ENQUEUED = 2, _("enqueued")
+        RUNNING = 3, _("running")
+        COMPLETED = 4, _("completed")
+        FAILED = 5, _("failed")
+        RECOVERY = 6, _("recovery")
 
     backend = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
@@ -106,17 +110,55 @@ class FetchTask(Task):
     age = PositiveIntegerField(default=0)
     executions = PositiveIntegerField(default=0)
     num_failures = PositiveIntegerField(default=0)
-    job_id = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True, default=None)
     queue = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True, default=None)
     # Scheduling configuration
     scheduled_datetime = DateTimeField(null=True, default=None)
-    interval = PositiveIntegerField(default=DEFAULT_JOB_INTERVAL)
-    max_retries = PositiveIntegerField(null=True, default=MAX_JOB_RETRIES)
+    interval = PositiveIntegerField(default=settings.PERCEVAL_JOB_INTERVAL)
+    max_retries = PositiveIntegerField(null=True, default=settings.PERCEVAL_JOB_MAX_RETRIES)
     last_execution = DateTimeField(null=True, default=None)
 
     @property
     def task_id(self):
-        return f"{TASK_PREFIX}{self.pk}"
+        return f"{settings.TASK_PREFIX}{self.pk}"
 
     class Meta:
         db_table = 'fetch_tasks'
+
+
+class Job(EntityBase):
+    class Status(IntegerChoices):
+        """
+        The life cycle of a job starts when it is `ENQUEUED`.
+
+        The job will advance in the queue while other jobs are
+        executed. Right after it gets to the head of the queue and a
+        worker is free it will execute. The job will be `RUNNING`.
+
+        Depending on the result executing the job, the outcomes will
+        be different. If the job executed successfully, the job
+        will be set to `COMPLETED`. If there was an error the status
+        will be `FAILED`.
+        """
+        ENQUEUED = 1, _("enqueued")
+        RUNNING = 2, _("running")
+        COMPLETED = 3, _("completed")
+        FAILED = 4, _("failed")
+
+    job_id = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+    task = ForeignKey(FetchTask, on_delete=CASCADE, related_name='jobs')
+    backend = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+    category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+    backend_args = JSONField(null=True, default=None)
+    status = IntegerField(choices=Status.choices, default=Status.ENQUEUED)
+    queue = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True, default=None)
+    scheduled_datetime = DateTimeField(null=True, default=None)
+    result = JSONField(null=True, default=None)
+    logs = JSONField(null=True, default=None)
+
+
+# class Token(EntityBase):
+#     backend = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+#     token = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+#
+#     class Meta:
+#         db_table = 'tokens'

@@ -36,8 +36,8 @@ logger = logging.getLogger('main')
 
 @click.group()
 @click.option('--config', 'cfg', envvar='GRIMOIRELAB_CONFIG',
-              help="Config module in Python path syntax,"
-                   "e.g. grimoirelab.core.config.settings.")
+              default='grimoirelab.core.config.settings', show_default=True,
+              help="Configuration module in Python path syntax")
 def config(cfg: str):
     """GrimoireLab administration tool.
 

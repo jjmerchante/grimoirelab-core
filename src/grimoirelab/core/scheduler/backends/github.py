@@ -20,19 +20,17 @@
 #
 
 from __future__ import annotations
-
-import os
 from typing import Any, TYPE_CHECKING
 
-from django.conf import settings
-
 from .backend import Backend
+
+# from ..models import Token
 
 if TYPE_CHECKING:
     from grimoirelab.core.scheduler.models import FetchTask
 
 
-class Git(Backend):
+class GitHub(Backend):
     """Backend specific methods for the Scheduler"""
 
     @staticmethod
@@ -47,14 +45,14 @@ class Git(Backend):
         """
         job_args = Backend.create_backend_args(task)
 
-        # For the first execution make some arguments mandatory
-        base_path = os.path.expanduser(settings.GIT_PATH)
-        uri = task.backend_args['uri']
-        processed_uri = uri.lstrip('/')
-        git_path = os.path.join(base_path, processed_uri) + '-git'
+        tokens = job_args['backend_args'].get('api_token')
+        # if not tokens:
+        #     tokens = list(Token.objects.filter(backend='github').values_list('token', flat=True))
+        if not isinstance(tokens, list):
+            tokens = [tokens]
 
-        job_args['backend_args']['latest_items'] = False
-        job_args['backend_args']['gitpath'] = git_path
+        job_args['backend_args']['api_token'] = tokens
+        job_args['backend_args']['sleep_for_rate'] = True
 
         return job_args
 
@@ -67,10 +65,13 @@ class Git(Backend):
         :param summary: summary of the PercevalJob
         :param backend_args: backend arguments for the job
         """
-        backend_args["latest_items"] = True
+        # Include all the tokens available
+        # if 'api_token' not in backend_args['backend_args']:
+        #     tokens = list(Token.objects.filter(backend='github').values_list('token', flat=True))
+        #     backend_args['backend_args']['api_token'] = tokens
 
-        if "recovery_commit" in backend_args:
-            del backend_args["recovery_commit"]
+        backend_args['sleep_for_rate'] = True
+        backend_args['from_date'] = summary.last_updated_on
 
         return backend_args
 
@@ -82,10 +83,12 @@ class Git(Backend):
         :param summary: summary of the PercevalJob
         :param backend_args: backend arguments for the job
         """
-        if summary and summary.last_offset:
-            backend_args["recovery_commit"] = summary.last_offset
-            backend_args["latest_items"] = False
-        else:
-            backend_args["latest_items"] = True
+        # Include all the tokens available
+        # if 'api_token' not in backend_args['backend_args']:
+        #     tokens = list(Token.objects.filter(backend='github').values_list('token', flat=True))
+        #     backend_args['backend_args']['api_token'] = tokens
+
+        if summary and summary.last_updated_on:
+            backend_args["from_date"] = summary.last_updated_on
 
         return backend_args

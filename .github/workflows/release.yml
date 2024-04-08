@@ -14,7 +14,7 @@ jobs:
       - name: Build package using Poetry and store result
         uses: chaoss/grimoirelab-github-actions/build@master
         with:
-          artifact-name: grimoirelab-dist
+          artifact-name: grimoirelab-core-dist
           artifact-path: dist
 
   tests:
@@ -40,7 +40,7 @@ jobs:
       - name: Download distribution artifact
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
-          name: grimoirelab-dist
+          name: grimoirelab-core-dist
           path: dist
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -86,6 +86,6 @@ jobs:
       - name: Publish the package on PyPI
         uses: chaoss/grimoirelab-github-actions/publish@master
         with:
-          artifact-name: grimoirelab-dist
+          artifact-name: grimoirelab-core-dist
           artifact-path: dist
           pypi-api-token: ${{ secrets.PYPI_API_TOKEN }}

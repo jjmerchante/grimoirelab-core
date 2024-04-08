@@ -223,21 +223,47 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # You'll HAVE TO set the next parameters in order to run
 # them in the background.
 #
+# You can define the names of the RQ queues using the following
+# environment variables.
+#
 # Take into account RQ uses Redis database. You have more
 # info about these parameters on the following link:
 #
 # https://github.com/rq/django-rq
 #
 
+Q_PERCEVAL_JOBS = os.environ.get('GRIMOIRELAB_Q_PERCEVAL_JOBS', 'default')
+Q_STORAGE_ITEMS = os.environ.get('GRIMOIRELAB_Q_STORAGE_ITEMS', 'items')
+Q_EVENTS = os.environ.get('GRIMOIRELAB_Q_EVENTS', 'events')
+
+_RQ_DATABASE = {
+    'HOST': os.environ.get('GRIMOIRELAB_REDIS_HOST', '127.0.0.1'),
+    'PORT': os.environ.get('GRIMOIRELAB_REDIS_PORT', 6379),
+    'PASSWORD': os.environ.get('GRIMOIRELAB_REDIS_PASSWORD', ''),
+    'DB': os.environ.get('GRIMOIRELAB_REDIS_DB', 0),
+}
+
 RQ_QUEUES = {
-    'default': {
-        'HOST': os.environ.get('GRIMOIRELAB_REDIS_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('GRIMOIRELAB_REDIS_PORT', 6379),
-        'PASSWORD': os.environ.get('GRIMOIRELAB_REDIS_PASSWORD', ''),
-        'DB': os.environ.get('GRIMOIRELAB_REDIS_DB', 0),
-    }
+    Q_PERCEVAL_JOBS: _RQ_DATABASE,
+    Q_STORAGE_ITEMS: _RQ_DATABASE,
+    Q_EVENTS: _RQ_DATABASE,
 }
 
 RQ = {
     'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.PercevalJob'
 }
+
+
+#
+# Configuration for tasks and Perceval
+#
+
+TASK_PREFIX = 'grimoire:task:'
+
+PERCEVAL_JOB_RESULT_TTL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_RESULT_TTL', 300))
+PERCEVAL_JOB_TIMEOUT = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_TIMEOUT', -1))
+PERCEVAL_JOB_INTERVAL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_INTERVAL', 60 * 60 * 24))
+PERCEVAL_JOB_RETRY_INTERVAL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_RETRY_INTERVAL', 60))
+PERCEVAL_JOB_MAX_RETRIES = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_MAX_RETRIES', 5))
+
+GIT_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')

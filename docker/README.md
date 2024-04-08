@@ -61,7 +61,7 @@ docker run --rm -d --net grimoire-net --name grimoirelab-server \
 docker run --rm --net grimoire-net \
     --env-file docker/grimoirelab.env \
     grimoirelab/grimoirelab-core \
-    grimoirelab fetch-task git-repository https://github.com/chaoss/grimoirelab-perceval.git
+    grimoirelab fetch-task git https://github.com/chaoss/grimoirelab-perceval.git
 ```
 
 #### Consume items from the queue
