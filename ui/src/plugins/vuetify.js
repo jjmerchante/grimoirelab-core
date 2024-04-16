@@ -22,11 +22,11 @@ export default createVuetify({
           'on-background': '#1f2328',
           surface: '#ffffff',
           'on-surface': '#1f2328',
-          started: '#003756',
-          scheduled: '#797B7E',
+          running: '#f4bc00',
+          new: '#3fa500',
           enqueued: '#003756',
-          canceled: '#f4bc00',
-          finished: '#3fa500',
+          recovery: '#f4bc00',
+          completed: '#3fa500',
           failed: '#f41900',
           icon: '#636c76'
         }

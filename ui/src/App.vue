@@ -1,4 +1,6 @@
 <script setup>
+import { RouterView } from 'vue-router'
+import BreadCrumbs from './components/BreadCrumbs.vue'
 </script>
 
 <template>
@@ -8,7 +10,19 @@
         <img src="./assets/favicon.png" height="30" />
       </template>
     </v-app-bar>
+    <v-navigation-drawer class="pa-2" color="transparent" permanent>
+      <v-list color="primary" density="compact">
+        <v-list-item :to="{ name: 'taskList' }">
+          <template #prepend>
+            <v-icon>mdi-calendar</v-icon>
+          </template>
+          <v-list-item-title>Tasks</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
     <v-main>
+      <BreadCrumbs />
+      <RouterView />
     </v-main>
   </v-app>
 </template>

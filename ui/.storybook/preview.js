@@ -1,5 +1,6 @@
 import { setup } from '@storybook/vue3';
 import vuetify from '../src/plugins/vuetify'
+import '../src/assets/main.css';
 
 setup((app) => {
   app.use(vuetify);
