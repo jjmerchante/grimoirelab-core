@@ -249,11 +249,6 @@ RQ_QUEUES = {
     Q_EVENTS: _RQ_DATABASE,
 }
 
-RQ = {
-    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.PercevalJob'
-}
-
-
 #
 # Configuration for tasks and Perceval
 #
