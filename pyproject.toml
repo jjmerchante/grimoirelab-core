@@ -34,7 +34,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/chaoss/grimoirelab-core/issues"
 
 [tool.poetry.scripts]
-grimoirelab = "grimoirelab.core.runner:grimoirelab"
+grimoirelab = "grimoirelab.core.runner.cmd:grimoirelab"
 
 [tool.poetry.dependencies]
 python = "^3.11"
