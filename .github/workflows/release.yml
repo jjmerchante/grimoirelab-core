@@ -1,0 +1,91 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+      - '*.*.*-*'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build package using Poetry and store result
+        uses: chaoss/grimoirelab-github-actions/build@master
+        with:
+          artifact-name: grimoirelab-core-dist
+          artifact-path: dist
+
+  tests:
+    needs: [build]
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mariadb:10.5
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    name: Python ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Download distribution artifact
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: grimoirelab-core-dist
+          path: dist
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "PATH=$HOME/.poetry/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Install dev dependencies
+        run: |
+          poetry install --only dev --no-root
+
+      - name: Set MySQL mode
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          mysql --host $DB_HOST --port $DB_PORT -uroot -proot -e "SET GLOBAL sql_mode = 'NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
+
+      - name: Test package backend
+        run: |
+          PACKAGE=`(cd dist && ls *whl)` && echo $PACKAGE
+          poetry run pip install --pre ./dist/$PACKAGE
+          poetry run python manage.py test --settings=config.settings.testing
+
+  release:
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create a new release on the repository
+        uses: chaoss/grimoirelab-github-actions/release@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the package on PyPI
+        uses: chaoss/grimoirelab-github-actions/publish@master
+        with:
+          artifact-name: grimoirelab-core-dist
+          artifact-path: dist
+          pypi-api-token: ${{ secrets.PYPI_API_TOKEN }}
