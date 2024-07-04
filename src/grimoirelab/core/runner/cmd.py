@@ -24,6 +24,7 @@ import os
 import click
 import django.core.wsgi
 
+from .commands.admin import admin
 from .commands.run import run
 
 if typing.TYPE_CHECKING:
@@ -67,5 +68,5 @@ def grimoirelab(ctx: Context, cfg: str):
     _ = django.core.wsgi.get_wsgi_application()
 
 
+grimoirelab.add_command(admin)
 grimoirelab.add_command(run)
-
