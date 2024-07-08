@@ -29,7 +29,6 @@ classifiers = [
    "Programming Language :: Python :: 3"
 ]
 
-
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/chaoss/grimoirelab-core/issues"
 
