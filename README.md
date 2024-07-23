@@ -18,7 +18,7 @@ By default, items fetched by each job will be published using a Redis queue.
 
 ## Requirements
 
-- Python >= 3.8
+- Python >= 3.11
 - Redis database
 - MySQL database
 

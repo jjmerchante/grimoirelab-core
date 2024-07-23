@@ -37,7 +37,7 @@ classifiers = [
 grimoirelab = "grimoirelab.core.runner:grimoirelab"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.11"
 
 django = "^4.2"
 django-rq = "^2.10.1"
@@ -48,10 +48,10 @@ perceval = {version = "^1.0.2", allow-prereleases = true}
 # TODO: Change chronicler to package
 grimoirelab-chronicler = {git = "https://github.com/grimoirelab/grimoirelab-chronicler.git", allow-prereleases = true}
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 fakeredis = "^2.0.0"
 httpretty = "^1.1.4"
-flake8 = "^4.0.1"
+flake8 = ">=7.0"
 
 [build-system]
 requires = ["poetry-core"]
