@@ -1,0 +1,51 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) GrimoireLab Contributors
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
+from __future__ import annotations
+
+import typing
+
+from .models import get_all_registered_task_models
+from .errors import NotFoundError
+
+
+if typing.TYPE_CHECKING:
+    from .models import Job
+
+
+def find_job(job_uuid: str) -> Job:
+    """Find a job by its uuid.
+
+    Due to the way the jobs are defined with Django,
+    we need to iterate through all the job models to find
+    the job.
+
+    :param job_uuid: the job uuid to find.
+
+    :returns: the job found.
+
+    :raises NotFoundError: if the job is not found.
+    """
+    for _, job_class in get_all_registered_task_models():
+        try:
+            job = job_class.objects.get(uuid=job_uuid)
+        except job_class.DoesNotExist:
+            continue
+        else:
+            return job
+    raise NotFoundError(element=job_uuid)
