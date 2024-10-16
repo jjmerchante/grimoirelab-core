@@ -1,8 +1,11 @@
 from grimoirelab.core.config.settings import *  # noqa: F403,F401
+from grimoirelab.core.config.settings import _RQ_DATABASE
 
+import rq
 import django_rq.queues
 
 from fakeredis import FakeRedis, FakeStrictRedis
+
 
 LOGGING = {}
 
@@ -52,5 +55,10 @@ class FakeRedisConn:
             self.conn = FakeStrictRedis() if strict else FakeRedis()
         return self.conn
 
+
+RQ_QUEUES['testing'] = _RQ_DATABASE  # noqa: F405
+RQ = {
+    'WORKER_CLASS': rq.worker.SimpleWorker
+}
 
 django_rq.queues.get_redis_connection = FakeRedisConn()

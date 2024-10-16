@@ -15,254 +15,214 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Authors:
-#     Santiago Dueñas <sduenas@bitergia.com>
-#     Jose Javier Merchante <jjmerchante@bitergia.com>
-#
 
 from __future__ import annotations
 
 import datetime
 import logging
-
-from typing import Any, TYPE_CHECKING
-from uuid import uuid4
+import typing
+import uuid
 
 import django_rq
-import perceval
+import rq.job
 
 from django.conf import settings
-from rq import cancel_job
-from rq.job import Job as JobRQ
 
-from .backends.utils import get_scheduler_backend
+from grimoirelab_toolkit.datetime import datetime_utcnow
+
+from .db import find_job
 from .errors import NotFoundError
-from .jobs import PercevalJob
-from .models import FetchTask, Job
+from .models import (
+    Job,
+    SchedulerStatus,
+    Task,
+    get_registered_task_model
+)
 
-if TYPE_CHECKING:
-    from redis import Redis
+if typing.TYPE_CHECKING:
+    import redis
+    from typing import Any
+
 
 logger = logging.getLogger(__name__)
 
 
 def schedule_task(
-        backend: str,
-        category: str,
-        backend_args: dict[str, Any],
-        queue_id: str = settings.Q_PERCEVAL_JOBS,
-        interval: int = settings.PERCEVAL_JOB_INTERVAL,
-        max_retries: int = settings.PERCEVAL_JOB_MAX_RETRIES,
-) -> FetchTask:
-    """Create a new task and schedule a job for that task"""
+    task_type: str,
+    task_args: dict[str, Any],
+    job_interval: int = settings.GRIMOIRELAB_JOB_INTERVAL,
+    job_max_retries: int = settings.GRIMOIRELAB_JOB_MAX_RETRIES,
+    burst: bool = False
+) -> Task:
+    """Schedule a task to be executed in the future.
 
-    task = FetchTask.objects.create(
-        backend=backend,
-        category=category,
-        backend_args=backend_args,
-        queue=queue_id,
-        interval=interval,
-        max_retries=max_retries,
-        status=FetchTask.Status.ENQUEUED
+    :param task_type: type of task to be scheduled.
+    :param task_args: arguments to be passed to the task.
+    :param job_interval: interval in seconds between each task execution.
+    :param job_max_retries: maximum number of retries before the task
+        is considered failed.
+    :param burst: flag to indicate if the task will only run once.
+
+    :return: the scheduled task object.
+    """
+    task_class, _ = get_registered_task_model(task_type)
+    task = task_class.create_task(
+        task_args, job_interval, job_max_retries, burst=burst
     )
-    enqueue_task(task=task)
+    _enqueue_task(
+        task,
+        scheduled_at=datetime_utcnow()
+    )
 
     return task
 
 
-def remove_task(task_id: str):
-    """Remove a task and cancel the associated job"""
+def _enqueue_task(
+    task: Task,
+    scheduled_at: datetime.datetime | None = None
+) -> Job:
+    """Enqueue the task to be executed in the future.
+
+    A new job for the task will be created and enqueued in the
+    best queue available. This job will be scheduled to execute
+    at the time specified by the parameter 'scheduled_at'. When
+    this parameter is not set, the job will be run as soon as
+    possible.
+
+    :param task: task to be enqueued.
+    :param scheduled_at: datetime when the task should be executed.
+
+    :return: the job object created.
+    """
+    if not scheduled_at:
+        scheduled_at = datetime_utcnow()
+
+    job_args = task.prepare_job_parameters()
+    queue = task.default_job_queue
+
+    _, job_class = get_registered_task_model(task.task_type)
+
+    job = job_class.objects.create(
+        uuid=str(uuid.uuid4()),
+        job_num=job_class.objects.filter(task=task).count() + 1,
+        job_args=job_args,
+        queue=queue,
+        scheduled_at=scheduled_at,
+        task=task
+    )
 
     try:
-        task = FetchTask.objects.get(id=task_id)
-    except FetchTask.DoesNotExist:
-        raise NotFoundError(element=task_id)
+        queue_rq = django_rq.get_queue(queue)
+        queue_rq.enqueue_at(
+            datetime=scheduled_at,
+            f=task.job_function,
+            result_ttl=settings.GRIMOIRELAB_JOB_RESULT_TTL,
+            job_timeout=settings.GRIMOIRELAB_JOB_TIMEOUT,
+            on_success=task.on_success_callback,
+            on_failure=task.on_failure_callback,
+            job_id=job.uuid,
+            **job_args,
+        )
 
-    connection = django_rq.get_connection()
-
-    job = Job.objects.filter(task=task, status=Job.Status.RUNNING).only('job_id')
-    if job:
-        cancel_job(job.job_id, connection=connection)
-
-    task.delete()
-
-
-def reschedule_task(task_id: str):
-    """Reschedule a task from scratch when is with status failed"""
-
-    try:
-        task = FetchTask.objects.get(id=task_id)
-    except FetchTask.DoesNotExist:
-        raise NotFoundError(element=task_id)
-
-    if task.status == FetchTask.Status.FAILED:
-        task.age = 0
-        task.executions = 0
-        task.num_failures = 0
-        task.status = FetchTask.Status.ENQUEUED
+        job.status = SchedulerStatus.ENQUEUED
+        task.status = SchedulerStatus.ENQUEUED
+        task.scheduled_at = scheduled_at
+    except Exception as e:
+        logger.error(f"Error enqueuing job of task {task.task_id}. Not scheduled. Error: {e}")
+        job.status = SchedulerStatus.FAILED
+        task.status = SchedulerStatus.FAILED
+        raise e
+    finally:
+        job.save()
         task.save()
 
-        enqueue_task(task=task)
-
-        return True
-
-    return False
-
-
-def _build_job_args(task):
-    return {
-        'qitems': settings.Q_EVENTS,
-        'task_id': task.task_id
-    }
-
-
-def enqueue_task(
-        task: FetchTask,
-        scheduled_datetime: datetime.datetime | None = None,
-        job_args: dict | None = None
-) -> PercevalJob:
-    """
-    Create a new job for the specified Task at a specific time.
-    The arguments of the new job are based on those of the previous
-    job or the task, if the job doesn't exist.
-    The status of the task will change to `ENQUEUED`.
-
-    :param task: the task to enqueue
-    :param scheduled_datetime: datetime at which the task will be executed
-    :param job_args: use these arguments for the job
-    :return: Perceval job enqueued
-    """
-
-    if not scheduled_datetime:
-        scheduled_datetime = datetime.datetime.now(datetime.timezone.utc)
-
-    if not job_args:
-        job_args = _build_job_args(task)
-        backend = get_scheduler_backend(task.backend)
-        backend_args = backend.create_backend_args(task)
-        job_args.update(backend_args)
-
-    job = Job.objects.create(
-        job_id=str(uuid4()),
-        task=task,
-        backend=task.backend,
-        category=task.category,
-        backend_args=job_args,
-        queue=task.queue,
-        scheduled_datetime=scheduled_datetime
-    )
-
-    django_rq.get_queue(task.queue, job_class=PercevalJob).enqueue_at(
-        datetime=scheduled_datetime,
-        f=PercevalJob.run,
-        result_ttl=settings.PERCEVAL_JOB_RESULT_TTL,
-        job_timeout=settings.PERCEVAL_JOB_TIMEOUT,
-        on_success=on_success_callback,
-        on_failure=on_failure_callback,
-        job_id=job.job_id,
-        **job_args,
-    )
-
-    task.age += 1
-    task.scheduled_datetime = scheduled_datetime
-    task.save()
-
     logger.info(
-        f"Job #{job.job_id} (task: {job_args['task_id']}) ({job_args['backend']})"
-        f" enqueued in '{task.queue}' at {scheduled_datetime}"
+        f"Job #{job.job_id} (task: {task.task_id})"
+        f" enqueued in '{job.queue}' at {scheduled_at}"
     )
 
     return job
 
 
-def on_success_callback(job: JobRQ, connection: Redis, result: Any, *args) -> None:
+def _on_success_callback(
+    job: rq.job.Job,
+    connection: redis.Redis,
+    result: Any,
+    *args,
+    **kwargs
+) -> None:
     """Reschedule the job based on the interval defined by the task.
 
     The new arguments for the job are obtained from the result
     of the job object.
     """
     try:
-        dbjob = Job.objects.get(job_id=job.id)
-    except Job.DoesNotExist:
+        job_db = find_job(job.id)
+    except NotFoundError:
         logger.error("Job not found. Not rescheduling.")
         return
 
-    # Update task
-    task = dbjob.task
-    task.status = FetchTask.Status.COMPLETED
-    task.last_execution = datetime.datetime.now(datetime.timezone.utc)
-    task.executions = task.executions + 1
-    task.failed = False
-    task.num_failures = 0
-    task.save()
+    job_db.save_run(SchedulerStatus.COMPLETED,
+                    result=result, logs=job.meta.get('log', None))
+    task = job_db.task
 
-    # Update job result
-    dbjob.status = Job.Status.COMPLETED
-    dbjob.result = result.to_dict()
-    dbjob.logs = job.meta['log']
-    dbjob.save()
+    logger.info(
+        f"Job #{job_db.job_id} (task: {task.task_id}) completed."
+    )
 
-    logger.info(f"Job #{job.id} (task: {task.id}) completed. {result.summary.fetched} items fetched.")
-
-    # Create new job
-    if task.interval > 0:
-        task.status = FetchTask.Status.ENQUEUED
-        backend = get_scheduler_backend(task.backend)
-        job_args = backend.update_backend_args(result.summary, dbjob.backend_args)
-        scheduled_datetime = datetime.datetime.now(
-            datetime.timezone.utc
-        ) + datetime.timedelta(seconds=task.interval)
-        enqueue_task(task, scheduled_datetime=scheduled_datetime, job_args=job_args)
-
-
-def on_failure_callback(job: JobRQ, connection: Redis, t: Any, value: Any, traceback: Any):
-    try:
-        jobdb = Job.objects.get(job_id=job.id)
-    except Job.DoesNotExist:
-        logger.error("Job not found. Not rescheduling.")
+    # Reschedule task
+    if task.burst:
+        logger.info(f"Task: {task.task_id} finished.", "It was a burst task. It won't be rescheduled.")
         return
-
-    result = job.meta.get('result', None)
-
-    # Update the task
-    task = jobdb.task
-    task.status = FetchTask.Status.FAILED
-    task.last_execution = datetime.datetime.now(datetime.timezone.utc)
-    task.num_failures += 1
-    task.save()
-
-    # Update the job result
-    jobdb.status = Job.Status.FAILED
-    jobdb.result = result.to_dict() if result else None
-    jobdb.logs = job.meta.get('log', None)
-    jobdb.save()
-
-    logger.error(f"Job #{job.id} (task: {task.id}) failed; error: {value}")
-
-    task_max_retries = settings.PERCEVAL_JOB_MAX_RETRIES
-
-    # Retry the task if possible
-    try:
-        bklass = perceval.backend.find_backends(perceval.backends)[0][task.backend]
-    except KeyError:
-        bklass = None
-
-    if not bklass or not bklass.has_resuming():
-        logger.error(f"Job #{job.id} (task: {task.id}) unable to resume; cancelled")
-    elif task.num_failures >= task_max_retries:
-        logger.error(f"Job #{job.id} (task: {task.id}) max retries reached; cancelled")
     else:
-        logger.error(f"Job #{job.id} (task: {task.id}) failed but task will be retried")
-        task.status = FetchTask.Status.RECOVERY
+        scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
+        _enqueue_task(task, scheduled_at=scheduled_at)
 
-        job_args = None
-        if result and result.summary:
-            backend = get_scheduler_backend(task.backend)
-            job_args = backend.recovery_params(
-                result.summary, jobdb.backend_args
-            )
 
-        scheduled_datetime = datetime.datetime.now(
-            datetime.timezone.utc
-        ) + datetime.timedelta(seconds=settings.PERCEVAL_JOB_RETRY_INTERVAL)
-        enqueue_task(task, scheduled_datetime=scheduled_datetime, job_args=job_args)
+def _on_failure_callback(
+    job: rq.job.JobRQ,
+    connection: redis.Redis,
+    t: Any,
+    value: Any,
+    traceback: Any
+):
+    """Reschedule the job when it failed.
+
+    The function will try to reschedule again the job. This means
+    that in some cases, it will have to try to recover from the
+    point it failed.
+
+    If the job reached the number of retries, it will be cancelled.
+
+    The new arguments for the job are obtained from the result
+    of the job object.
+    """
+    try:
+        job_db = find_job(job.id)
+    except NotFoundError:
+        logger.error("Job not found. Not rescheduling.")
+        return
+
+    job_db.save_run(SchedulerStatus.FAILED,
+                    result=None, logs=job.meta.get('log', None))
+    task = job_db.task
+
+    logger.error(
+        f"Job #{job_db.job_id} (task: {task.task_id}) failed; error: {value}"
+    )
+
+    # Try to retry the task
+    if task.failures >= task.job_max_retries:
+        logger.error(
+            f"Task: {task.task_id} max retries reached; cancelled"
+        )
+        return
+    elif not task.can_be_retried():
+        logger.error(f"Task: {task.task_id} can't be retried")
+        return
+    else:
+        logger.error(f"Task: {task.task_id} failed but task will be retried")
+        task.status = SchedulerStatus.RECOVERY
+
+    scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
+    _enqueue_task(task, scheduled_at=scheduled_at)
