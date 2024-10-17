@@ -30,7 +30,10 @@ from django.conf import settings
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
-from .db import find_job
+from .db import (
+    find_job,
+    find_task
+)
 from .errors import NotFoundError
 from .models import (
     Job,
@@ -75,6 +78,28 @@ def schedule_task(
     )
 
     return task
+
+
+def cancel_task(task_uuid: str) -> None:
+    """Cancel a task that is scheduled and delete all its jobs.
+
+    The task will be deleted from the database and all its jobs
+    too. Pending jobs will be also canceled and removed.
+
+    :param task_uuid: uuid of the task to be cancelled.
+
+    :raises NotFoundError: when the task is not found.
+    """
+    task = find_task(task_uuid)
+
+    _, job_class = get_registered_task_model(task.TASK_TYPE)
+
+    jobs = job_class.objects.filter(task=task).all()
+    for job in jobs:
+        job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+    task.delete()
 
 
 def _enqueue_task(

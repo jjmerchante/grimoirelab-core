@@ -21,10 +21,12 @@ import unittest.mock
 import datetime
 import django.db
 import django_rq.workers
+import rq.job
 
 import grimoirelab_toolkit.datetime
 
 from grimoirelab.core.scheduler.db import find_job
+from grimoirelab.core.scheduler.errors import NotFoundError
 from grimoirelab.core.scheduler.models import (
     Task,
     SchedulerStatus,
@@ -32,6 +34,7 @@ from grimoirelab.core.scheduler.models import (
     GRIMOIRELAB_TASK_MODELS)
 from grimoirelab.core.scheduler.scheduler import (
     schedule_task,
+    cancel_task,
     _enqueue_task,
     _on_success_callback,
     _on_failure_callback
@@ -243,6 +246,81 @@ class OnSuccessCallbackTestTask(Task):
     @staticmethod
     def on_failure_callback(*args, **kwargs):
         return _on_failure_callback(*args, **kwargs)
+
+
+class TestCancelTask(GrimoireLabTestCase):
+    """Unit tests for canceling tasks"""
+
+    def setUp(self):
+        GRIMOIRELAB_TASK_MODELS.clear()
+        self.task_class, self.job_class = register_task_model(
+            'callback_test_task', OnSuccessCallbackTestTask
+        )
+
+        def cleanup_test_model():
+            with django.db.connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(self.job_class)
+                schema_editor.delete_model(self.task_class)
+
+        with django.db.connection.schema_editor() as schema_editor:
+            schema_editor.create_model(self.task_class)
+            schema_editor.create_model(self.job_class)
+
+        self.addCleanup(cleanup_test_model)
+        super().setUp()
+
+    def test_cancel_task(self):
+        """A task is correctly canceled and removed, including jobs"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+        task1 = schedule_task('callback_test_task', task_args)
+        task2 = schedule_task('callback_test_task', task_args)
+
+        # Run the job
+        worker = django_rq.workers.get_worker('testing')
+        worker.work(burst=True, with_scheduler=True)
+
+        # Check jobs after execution
+        self.assertEqual(self.job_class.objects.count(), 4)
+
+        # Two jobs were created for task1:
+        # one finished and other is scheduled
+        uuids = [
+            job.uuid for job in self.job_class.objects.filter(task=task1).all()
+        ]
+        self.assertEqual(len(uuids), 2)
+
+        for job_uuid in uuids:
+            rq.job.Job.fetch(job_uuid, connection=django_rq.get_connection())
+
+        # Cancel task
+        cancel_task(task1.uuid)
+
+        # Only jobs from task1 where deleted
+        jobs = self.job_class.objects.all()
+        self.assertEqual(len(jobs), 2)
+
+        for job in jobs:
+            self.assertEqual(job.task.uuid, task2.uuid)
+
+        for job_uuid in uuids:
+            with self.assertRaises(rq.exceptions.NoSuchJobError):
+                rq.job.Job.fetch(job_uuid, connection=django_rq.get_connection())
+
+        # Task were also deleted from the database
+        with self.assertRaises(self.task_class.DoesNotExist):
+            task1.refresh_from_db()
+
+    def test_no_task_found(self):
+        """An exception is raised when the task doesn't exist"""
+
+        schedule_task('callback_test_task', {})
+
+        with self.assertRaises(NotFoundError):
+            cancel_task('non-existent-task-uuid')
 
 
 class TestOnSuccessCallback(GrimoireLabTestCase):

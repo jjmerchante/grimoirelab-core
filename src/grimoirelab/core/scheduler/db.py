@@ -25,7 +25,30 @@ from .errors import NotFoundError
 
 
 if typing.TYPE_CHECKING:
-    from .models import Job
+    from .models import Task, Job
+
+
+def find_task(task_uuid: str) -> Task:
+    """Find a task by its uuid.
+
+    Due to the way the tasks are defined with Django,
+    we need to iterate through all the task models to find
+    the task.
+
+    :param task_uuid: the task uuid to find.
+
+    :returns: the task found
+    .
+    :raises NotFoundError: when the task is not found.
+    """
+    for task_class, _ in get_all_registered_task_models():
+        try:
+            task = task_class.objects.get(uuid=task_uuid)
+        except task_class.DoesNotExist:
+            continue
+        else:
+            return task
+    raise NotFoundError(element=task_uuid)
 
 
 def find_job(job_uuid: str) -> Job:

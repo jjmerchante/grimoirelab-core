@@ -19,7 +19,10 @@
 import django.db
 import django.test.utils
 
-from grimoirelab.core.scheduler.db import find_job
+from grimoirelab.core.scheduler.db import (
+    find_task,
+    find_job
+)
 from grimoirelab.core.scheduler.errors import NotFoundError
 from grimoirelab.core.scheduler.models import (
     Task,
@@ -40,6 +43,69 @@ class AnotherDummyTaskDB(Task):
     """Class for testing the task register"""
 
     TASK_TYPE = 'another_dummy_task'
+
+
+class TestFindTask(GrimoireLabTestCase):
+    """Unit tests for find_task function"""
+
+    @classmethod
+    def setUpClass(cls):
+        _, cls.DummyJobClass = register_task_model('dummy_task', DummyTaskDB)
+        _, cls.AnotherDummyJobClass = register_task_model('another_dummy_task', AnotherDummyTaskDB)
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        GRIMOIRELAB_TASK_MODELS.clear()
+        super().tearDownClass()
+
+    def setUp(self):
+        """Create the test model"""
+
+        def cleanup_test_model():
+            with django.db.connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(self.DummyJobClass)
+                schema_editor.delete_model(DummyTaskDB)
+                schema_editor.delete_model(self.AnotherDummyJobClass)
+                schema_editor.delete_model(AnotherDummyTaskDB)
+
+        with django.db.connection.schema_editor() as schema_editor:
+            schema_editor.create_model(DummyTaskDB)
+            schema_editor.create_model(self.DummyJobClass)
+            schema_editor.create_model(AnotherDummyTaskDB)
+            schema_editor.create_model(self.AnotherDummyJobClass)
+
+        self.addCleanup(cleanup_test_model)
+        super().setUp()
+
+    def test_find_task(self):
+        """Find a task by its uuid"""
+
+        dummy_task = DummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        another_dummy_task = AnotherDummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+
+        result = find_task(dummy_task.uuid)
+        self.assertEqual(result, dummy_task)
+
+        result = find_task(another_dummy_task.uuid)
+        self.assertEqual(result, another_dummy_task)
+
+    def test_find_task_not_found(self):
+        """An exception is raised when the job is not found"""
+
+        DummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        AnotherDummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+
+        with self.assertRaises(NotFoundError):
+            find_task('abcdefgh')
 
 
 class TestFindJob(GrimoireLabTestCase):
