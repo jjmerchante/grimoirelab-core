@@ -69,7 +69,6 @@ class SchedulerTestTask(Task):
         def on_success(job, connection, result, *args, **kwargs):
             job_db = find_job(job.id)
             job_db.save_run(SchedulerStatus.COMPLETED, progress=result)
-            print(f"Task completed successfully with result: {result}")
         return on_success(*args, **kwargs)
 
     @staticmethod
@@ -77,7 +76,6 @@ class SchedulerTestTask(Task):
         def on_failure(job, connection, t, value, traceback):
             job_db = find_job(job.id)
             job_db.save_run(SchedulerStatus.FAILED, progress=t)
-            print(f"Task failed with error: {t}")
         return on_failure(*args, **kwargs)
 
 

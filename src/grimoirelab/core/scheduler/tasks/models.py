@@ -121,7 +121,6 @@ class EventizerTask(Task):
         }
 
         args_gen = get_chronicler_argument_generator(self.datasource_type)
-        print(args_gen, self.datasource_type)
 
         # Get the latest job arguments used and use them
         # to prepare the new job arguments.

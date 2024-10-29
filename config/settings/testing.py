@@ -1,6 +1,8 @@
 from grimoirelab.core.config.settings import *  # noqa: F403,F401
 from grimoirelab.core.config.settings import INSTALLED_APPS, _RQ_DATABASE, RQ
 
+import warnings
+
 import rq
 import django_rq.queues
 
@@ -8,7 +10,15 @@ from fakeredis import FakeRedis, FakeStrictRedis
 
 INSTALLED_APPS.append('tests')
 
-LOGGING = {}
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'loggers': {
+        "grimoirelab.core": {
+            "level": "CRITICAL"
+        },
+    }
+}
 
 SQL_MODE = [
     'NO_ZERO_IN_DATE',
@@ -22,7 +32,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'USER': 'root',
-        'PASSWORD': '',
+        'PASSWORD': 'root',
         'NAME': 'grimoirelab_db',
         'OPTIONS': {
             'charset': 'utf8mb4',
@@ -61,3 +71,14 @@ RQ_QUEUES['testing'] = _RQ_DATABASE  # noqa: F405
 RQ['WORKER_CLASS'] = rq.worker.SimpleWorker
 
 django_rq.queues.get_redis_connection = FakeRedisConn()
+
+# Ignore warnings raised by the tests
+
+# This warning is raised when the model is registered twice.
+# This is only happening because we are running the tests with
+# custom test models that need to be registered several times.
+warnings.filterwarnings('ignore', message=r"Model .+ was already registered")
+
+# This is raised because fakeredis does not support the CLIENT SETNAME
+# command. This is not important for the tests.
+warnings.filterwarnings('ignore', message=r"CLIENT SETNAME command not supported")
