@@ -55,7 +55,8 @@ def schedule_task(
     task_args: dict[str, Any],
     job_interval: int = settings.GRIMOIRELAB_JOB_INTERVAL,
     job_max_retries: int = settings.GRIMOIRELAB_JOB_MAX_RETRIES,
-    burst: bool = False
+    burst: bool = False,
+    *args, **kwargs
 ) -> Task:
     """Schedule a task to be executed in the future.
 
@@ -70,7 +71,8 @@ def schedule_task(
     """
     task_class, _ = get_registered_task_model(task_type)
     task = task_class.create_task(
-        task_args, job_interval, job_max_retries, burst=burst
+        task_args, job_interval, job_max_retries, burst=burst,
+        *args, **kwargs
     )
     _enqueue_task(
         task,
@@ -188,7 +190,7 @@ def _on_success_callback(
         return
 
     job_db.save_run(SchedulerStatus.COMPLETED,
-                    result=result, logs=job.meta.get('log', None))
+                    progress=result, logs=job.meta.get('log', None))
     task = job_db.task
 
     logger.info(
@@ -197,7 +199,7 @@ def _on_success_callback(
 
     # Reschedule task
     if task.burst:
-        logger.info(f"Task: {task.task_id} finished.", "It was a burst task. It won't be rescheduled.")
+        logger.info(f"Task: {task.task_id} finished. It was a burst task. It won't be rescheduled.")
         return
     else:
         scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
@@ -229,7 +231,8 @@ def _on_failure_callback(
         return
 
     job_db.save_run(SchedulerStatus.FAILED,
-                    result=None, logs=job.meta.get('log', None))
+                    progress=job.meta['progress'],
+                    logs=job.meta.get('log', None))
     task = job_db.task
 
     logger.error(
@@ -248,6 +251,7 @@ def _on_failure_callback(
     else:
         logger.error(f"Task: {task.task_id} failed but task will be retried")
         task.status = SchedulerStatus.RECOVERY
+        task.save()
 
     scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
     _enqueue_task(task, scheduled_at=scheduled_at)

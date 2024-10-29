@@ -15,27 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Authors:
-#     Santiago Dueñas <sduenas@bitergia.com>
-#     Jose Javier Merchante <jjmerchante@bitergia.com>
-#
 
-from .backend import Backend
-from .git import Git
-from .github import GitHub
-from .gitlab import GitLab
+import os
+
+from django.apps import AppConfig
 
 
-def get_scheduler_backend(backend: str):
-    backend = backend.lower()
-    # TODO: Move this to a global?
-    connectors = {
-        "git": Git,
-        "github": GitHub,
-        "gitlab": GitLab
-    }
-
-    try:
-        return connectors[backend]
-    except KeyError:
-        return Backend
+class TasksConfig(AppConfig):
+    name = 'grimoirelab.core.scheduler.tasks'
+    path = os.path.dirname(os.path.abspath(__file__))

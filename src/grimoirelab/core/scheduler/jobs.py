@@ -21,17 +21,11 @@ from __future__ import annotations
 import logging
 import typing
 
-import cloudevents.conversion
 import rq.job
 
-import perceval.backend
-import perceval.backends
-import chronicler.eventizer
-
-from .errors import NotFoundError
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
     from logging import LogRecord
     from rq.types import FunctionReferenceType
 
@@ -153,108 +147,3 @@ class JobLogHandler(logging.StreamHandler):
         }
         self.job.meta['log'].append(log)
         self.job.save_meta()
-
-
-def chronicler_job(datasource_type: str,
-                   datasource_category: str,
-                   events_queue: str,
-                   job_args: dict[str, Any] = None):
-    """Fetch and eventize data.
-
-    It will fetch data from a software development repository and
-    convert it into events. Fetched data and events will be
-    published to a Redis queue. The progress of the job can be accessed
-    through the property `progress`. The result of the job can be obtained
-    accessing to the property `result` of the object.
-
-    Data will be fetched using `perceval` and eventized using
-    `chronicler`.
-
-    :param datasource_type: type of the datasource
-        (e.g., 'git', 'github')
-    :param datasource_category: category of the datasource
-        (e.g., 'pull_request', 'issue')
-    :param job_args: extra arguments to pass to the job
-        (e.g., 'url', 'owner', 'repository')
-    """
-    rq_job = rq.get_current_job()
-
-    try:
-        backends = perceval.backend.find_backends(perceval.backends)[0]
-        backend_klass = backends[datasource_type]
-    except KeyError:
-        raise NotFoundError(element=datasource_type)
-
-    backend_args = job_args.copy() if job_args else {}
-
-    # Get the generator to fetch the data items
-    perceval_gen = perceval.backend.BackendItemsGenerator(backend_klass,
-                                                          backend_args,
-                                                          datasource_category)
-    progress = ChroniclerProgress(rq_job.get_id(),
-                                  datasource_type,
-                                  datasource_category,
-                                  None)
-    rq_job.progress = progress
-
-    # The chronicler generator will eventize the data items
-    # that are fetched by the perceval generator.
-    try:
-        events = chronicler.eventizer.eventize(datasource_type,
-                                               perceval_gen.items)
-        for event in events:
-            data = cloudevents.conversion.to_json(event)
-            rq_job.connection.rpush(events_queue, data)
-    finally:
-        progress.summary = perceval_gen.summary
-
-    return progress
-
-
-class ChroniclerProgress:
-    """Class to store the progress of a Chronicler job.
-
-    It stores the summary of the job and other useful data
-    such as the task and job identifiers, the backend and the
-    category of the items generated.
-
-    :param job_id: job identifier
-    :param backend: backend used to fetch the items
-    :param category: category of the fetched items
-    """
-    def __init__(self, job_id: str, backend: str, category: str,
-                 summary: Optional[perceval.backend.Summary] = None):
-        self.job_id = job_id
-        self.backend = backend
-        self.category = category
-        self.summary = summary
-
-    def to_dict(self) -> dict[str, str | int]:
-        """Convert object to a dict."""
-
-        result = {
-            'job_id': self.job_id,
-        }
-
-        if self.summary:
-            result['fetched'] = self.summary.fetched
-            result['skipped'] = self.summary.skipped
-            result['last_uuid'] = self.summary.last_uuid
-            result['min_offset'] = self.summary.min_offset
-            result['max_offset'] = self.summary.max_offset
-            result['last_offset'] = self.summary.last_offset
-            result['extras'] = self.summary.extras
-            if self.summary.min_updated_on:
-                result['min_updated_on'] = self.summary.min_updated_on.timestamp()
-            else:
-                result['min_updated_on'] = None
-            if self.summary.max_updated_on:
-                result['max_updated_on'] = self.summary.max_updated_on.timestamp()
-            else:
-                result['max_updated_on'] = None
-            if self.summary.last_updated_on:
-                result['last_updated_on'] = self.summary.last_updated_on.timestamp()
-            else:
-                result['last_updated_on'] = None
-
-        return result

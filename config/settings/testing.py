@@ -1,11 +1,12 @@
 from grimoirelab.core.config.settings import *  # noqa: F403,F401
-from grimoirelab.core.config.settings import _RQ_DATABASE
+from grimoirelab.core.config.settings import INSTALLED_APPS, _RQ_DATABASE, RQ
 
 import rq
 import django_rq.queues
 
 from fakeredis import FakeRedis, FakeStrictRedis
 
+INSTALLED_APPS.append('tests')
 
 LOGGING = {}
 
@@ -21,7 +22,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'USER': 'root',
-        'PASSWORD': 'root',
+        'PASSWORD': '',
         'NAME': 'grimoirelab_db',
         'OPTIONS': {
             'charset': 'utf8mb4',
@@ -57,8 +58,6 @@ class FakeRedisConn:
 
 
 RQ_QUEUES['testing'] = _RQ_DATABASE  # noqa: F405
-RQ = {
-    'WORKER_CLASS': rq.worker.SimpleWorker
-}
+RQ['WORKER_CLASS'] = rq.worker.SimpleWorker
 
 django_rq.queues.get_redis_connection = FakeRedisConn()

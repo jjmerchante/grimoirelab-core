@@ -252,7 +252,12 @@ class Job(BaseModel):
     class Meta:
         abstract = True
 
-    def save_run(self, status, progress=None, logs=None) -> None:
+    def save_run(
+        self,
+        status: SchedulerStatus,
+        progress: Any = None,
+        logs: list[str] = None
+    ) -> None:
         """Save the result of the job and task execution.
 
         This method will update the internal state of the job after a run,

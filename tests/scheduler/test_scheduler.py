@@ -68,16 +68,16 @@ class SchedulerTestTask(Task):
     def on_success_callback(*args, **kwargs):
         def on_success(job, connection, result, *args, **kwargs):
             job_db = find_job(job.id)
-            job_db.save_run(SchedulerStatus.COMPLETED, result=result)
+            job_db.save_run(SchedulerStatus.COMPLETED, progress=result)
             print(f"Task completed successfully with result: {result}")
         return on_success(*args, **kwargs)
 
     @staticmethod
     def on_failure_callback(*args, **kwargs):
-        def on_failure(job, connection, result, *args, **kwargs):
+        def on_failure(job, connection, t, value, traceback):
             job_db = find_job(job.id)
-            job_db.save_run(SchedulerStatus.FAILED, result=result)
-            print(f"Task failed with error: {result}")
+            job_db.save_run(SchedulerStatus.FAILED, progress=t)
+            print(f"Task failed with error: {t}")
         return on_failure(*args, **kwargs)
 
 
@@ -199,7 +199,7 @@ class TestScheduleTask(GrimoireLabTestCase):
         # Check job state after execution
         job.refresh_from_db()
         self.assertEqual(job.status, SchedulerStatus.COMPLETED)
-        self.assertEqual(job.result, 3)
+        self.assertEqual(job.progress, 3)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
 
@@ -344,8 +344,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         self.addCleanup(cleanup_test_model)
         super().setUp()
 
-    def test_on_failure_callback(self):
-        """The failure callback re-schedules the task"""
+    def test_on_success_callback(self):
+        """The success callback re-schedules the task"""
 
         task_args = {
             'a': 1,
@@ -365,7 +365,6 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         # Check job state after execution
         job.refresh_from_db()
         self.assertEqual(job.status, SchedulerStatus.COMPLETED)
-        self.assertEqual(job.result, 3)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
 
@@ -460,8 +459,9 @@ class OnFailureCallbackTestTask(Task):
         return _on_success_callback(*args, **kwargs)
 
     @staticmethod
-    def on_failure_callback(*args, **kwargs):
-        return _on_failure_callback(*args, **kwargs)
+    def on_failure_callback(job, connection, t, value, traceback, *args, **kwargs):
+        job.progress = str(t)
+        return _on_failure_callback(job, connection, t, value, traceback, *args, **kwargs)
 
 
 class OnFailureNoRetryTestTask(Task):
@@ -488,8 +488,9 @@ class OnFailureNoRetryTestTask(Task):
         return _on_success_callback(*args, **kwargs)
 
     @staticmethod
-    def on_failure_callback(*args, **kwargs):
-        return _on_failure_callback(*args, **kwargs)
+    def on_failure_callback(job, connection, t, value, traceback, *args, **kwargs):
+        job.progress = str(t)
+        return _on_failure_callback(job, connection, t, value, traceback, *args, **kwargs)
 
 
 class TestOnFailureCallback(GrimoireLabTestCase):
@@ -542,7 +543,7 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         # Check job state after execution
         job.refresh_from_db()
         self.assertEqual(job.status, SchedulerStatus.FAILED)
-        self.assertEqual(job.result, None)
+        self.assertEqual(job.progress, "<class 'Exception'>")
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
 
@@ -607,7 +608,7 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         # Check job state after execution
         job.refresh_from_db()
         self.assertEqual(job.status, SchedulerStatus.FAILED)
-        self.assertEqual(job.result, None)
+        self.assertEqual(job.progress, "<class 'Exception'>")
 
         # Only one job was created
         self.assertEqual(job_class.objects.count(), 1)
