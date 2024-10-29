@@ -1,13 +1,25 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) GrimoireLab Contributors
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
 from django.urls import re_path
 
 from . import views
 
 urlpatterns = [
-    re_path(r'^list', views.list_tasks),
-    re_path(r'^task/(?P<task_id>[a-zA-Z0-9_.-]+)/$', views.show_task),
-    re_path(r'^job/(?P<job_id>[a-zA-Z0-9_.-]+)/$', views.show_job),
     re_path(r'^add_task', views.add_task),
-    re_path(r'^remove_task', views.delete_task),
-    re_path(r'^reschedule_task', views.reschedule_task),
-    # re_path(r'^add_token', views.add_token),
 ]
