@@ -18,8 +18,11 @@
 
 from django.urls import re_path
 
+from . import api
 from . import views
+
 
 urlpatterns = [
     re_path(r'^add_task', views.add_task),
+    re_path(r'^tasks/', api.EventizerTaskList.as_view()),
 ]

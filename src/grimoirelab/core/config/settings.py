@@ -51,6 +51,28 @@ else:
     ]
 
 #
+# Cross-Origin Resource Sharing (CORS)
+#
+# You'll HAVE TO configure the origins that are authorized to make
+# cross-site HTTP requests. Check the following link to understand
+# the possibilities and parameters you can use.
+#
+# https://github.com/adamchainz/django-cors-headers#configuration
+#
+
+if 'GRIMOIRELAB_CORS_ALLOWED_ORIGINS' in os.environ:
+    CORS_ALLOWED_ORIGINS = os.environ['GRIMOIRELAB_CORS_ALLOWED_ORIGINS'].split(',')
+elif 'GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES' in os.environ:
+    CORS_ALLOWED_ORIGIN_REGEXES = os.environ['GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES'].split(',')
+else:
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:5173',
+    ]
+
+CORS_ALLOW_CREDENTIALS = True
+
+
+#
 # The secret key must be a large random value and it must be kept secret.
 #
 # https://docs.djangoproject.com/en/4.2/ref/settings/#secret-key
@@ -70,11 +92,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_rq',
+    'corsheaders',
+    'rest_framework',
     'grimoirelab.core.scheduler',
     'grimoirelab.core.scheduler.tasks',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -218,6 +243,15 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Django REST Framework settings
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100
+}
 
 #
 # GrimoireLab uses RQ to run background and async jobs.

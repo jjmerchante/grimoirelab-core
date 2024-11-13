@@ -351,6 +351,21 @@ argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
 
 [[package]]
+name = "django-cors-headers"
+version = "4.6.0"
+description = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "django_cors_headers-4.6.0-py3-none-any.whl", hash = "sha256:8edbc0497e611c24d5150e0055d3b178c6534b8ed826fb6f53b21c63f5d48ba3"},
+    {file = "django_cors_headers-4.6.0.tar.gz", hash = "sha256:14d76b4b4c8d39375baeddd89e4f08899051eeaf177cb02a29bd6eae8cf63aa8"},
+]
+
+[package.dependencies]
+asgiref = ">=3.6"
+django = ">=4.2"
+
+[[package]]
 name = "django-rq"
 version = "2.10.2"
 description = "An app that provides django integration for RQ (Redis Queue)"
@@ -369,6 +384,20 @@ rq = ">=1.14"
 [package.extras]
 sentry = ["raven (>=6.1.0)"]
 testing = ["mock (>=2.0.0)"]
+
+[[package]]
+name = "djangorestframework"
+version = "3.15.2"
+description = "Web APIs for Django, made easy."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "djangorestframework-3.15.2-py3-none-any.whl", hash = "sha256:2b8871b062ba1aefc2de01f773875441a961fefbf79f5eed1e32b2f096944b20"},
+    {file = "djangorestframework-3.15.2.tar.gz", hash = "sha256:36fe88cd2d6c6bec23dca9804bab2ba5517a8bb9d8f47ebc68981b56840107ad"},
+]
+
+[package.dependencies]
+django = ">=4.2"
 
 [[package]]
 name = "dulwich"
@@ -834,4 +863,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b396c51e1014392cf1203eeb44799fd49ff70bf11724a128fbf71426c36b9383"
+content-hash = "a55cdfda9bca58b26a880805697a9fef438c16d8aaa766141d30d35fe4777afa"
