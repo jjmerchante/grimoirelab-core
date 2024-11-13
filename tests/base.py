@@ -15,18 +15,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Authors:
-#     Santiago Dueñas <sduenas@bitergia.com>
-#     Jose Javier Merchante <jjmerchante@bitergia.com>
-#
 
-from django.test import TestCase
+from django.test import TransactionTestCase
+
 from fakeredis import FakeStrictRedis
 
 
-class TestBaseRQ(TestCase):
-    """Base class to inherit test cases from for RQ"""
+class GrimoireLabTestCase(TransactionTestCase):
+    """Base class to build tests for GrimoireLab Core.
 
+    This class contains all necessary to build tests cases for
+    GrimoireLab Core.
+
+    It's a subclass of Django's TransactionTestCase that helps
+    to run tests with database transactions. Also, it provides
+    a Redis mock connection to run tests with a Redis database.
+    """
     conn = None
 
     @classmethod

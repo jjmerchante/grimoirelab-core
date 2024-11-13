@@ -88,7 +88,7 @@ def server(ctx: Context, devel: bool):
               default=10,
               show_default=True,
               help="Number of workers to run in the pool.")
-def eventizers(num_workers: int):
+def eventizers(workers: int):
     """Start a pool of eventizer workers.
 
     The workers on the pool will run tasks to fetch data from software
@@ -103,7 +103,7 @@ def eventizers(num_workers: int):
     """
     from django.conf import settings
 
-    django.core.management.call_command('rqworker-pool',
-                                        settings.Q_PERCEVAL_JOBS,
-                                        num_workers=num_workers,
-                                        job_class='grimoirelab.core.scheduler.jobs.PercevalJob')
+    django.core.management.call_command(
+        'rqworker-pool', settings.Q_PERCEVAL_JOBS,
+        num_workers=workers
+    )

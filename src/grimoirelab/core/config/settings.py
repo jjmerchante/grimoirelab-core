@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_rq',
     'grimoirelab.core.scheduler',
+    'grimoirelab.core.scheduler.tasks',
 ]
 
 MIDDLEWARE = [
@@ -249,16 +250,17 @@ RQ_QUEUES = {
     Q_EVENTS: _RQ_DATABASE,
 }
 
+RQ = {
+    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.GrimoireLabJob'
+}
+
 #
-# Configuration for tasks and Perceval
+# Task default configuration
 #
 
-TASK_PREFIX = 'grimoire:task:'
+GRIMOIRELAB_JOB_INTERVAL = int(os.environ.get('GRIMOIRELAB_JOB_INTERVAL', 60 * 60 * 2))
+GRIMOIRELAB_JOB_MAX_RETRIES = int(os.environ.get('GRIMOIRELAB_JOB_MAX_RETRIES', 5))
+GRIMOIRELAB_JOB_RESULT_TTL = int(os.environ.get('GRIMOIRELAB_JOB_RESULT_TTL', 300))
+GRIMOIRELAB_JOB_TIMEOUT = int(os.environ.get('GRIMOIRELAB_JOB_TIMEOUT', -1))
 
-PERCEVAL_JOB_RESULT_TTL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_RESULT_TTL', 300))
-PERCEVAL_JOB_TIMEOUT = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_TIMEOUT', -1))
-PERCEVAL_JOB_INTERVAL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_INTERVAL', 60 * 60 * 24))
-PERCEVAL_JOB_RETRY_INTERVAL = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_RETRY_INTERVAL', 60))
-PERCEVAL_JOB_MAX_RETRIES = int(os.environ.get('GRIMOIRELAB_PERCEVAL_JOB_MAX_RETRIES', 5))
-
-GIT_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')
+GIT_STORAGE_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')
