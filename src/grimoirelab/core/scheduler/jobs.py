@@ -122,6 +122,9 @@ class GrimoireLabJob(rq.job.Job):
         try:
             self._add_log_handler()
             return super()._execute()
+        except Exception:
+            logger.exception(f"Error running job {self.id}.")
+            raise
         finally:
             self._remove_log_handler()
 

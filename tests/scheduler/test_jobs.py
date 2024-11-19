@@ -37,6 +37,15 @@ def do_something():
     return "Job executed successfully"
 
 
+def do_something_and_fail():
+    """Function to run on a job"""
+
+    logger = logging.getLogger(__name__)
+    logger.info("This is a log message")
+
+    raise Exception("Unexpected error")
+
+
 class TestGrimoireLabJob(GrimoireLabTestCase):
     """Unit tests for GrimoireLabJob class"""
 
@@ -86,7 +95,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
 
         job = GrimoireLabJob.create(func=do_something,
                                     connection=self.conn,
-                                    loggers=[__name__])
+                                    loggers=[__name__, 'grimoirelab.core.scheduler.jobs'])
         q = rq.Queue(
             'test-queue',
             job_class=GrimoireLabJob,
@@ -102,6 +111,25 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         # Check if log handler is removed after execution
         self.assertNotIn(job._job_logger,
                          logging.getLogger(__name__).handlers)
+
+    def test_job_capture_exception(self):
+        """Checks if the job captures exceptions and logs them"""
+
+        job = GrimoireLabJob.create(func=do_something_and_fail,
+                                    connection=self.conn,
+                                    loggers=[__name__, 'grimoirelab.core.scheduler.jobs'])
+        q = rq.Queue(
+            'test-queue',
+            job_class=GrimoireLabJob,
+            connection=self.conn,
+            is_async=False
+        )
+        job = q.enqueue_job(job)
+
+        self.assertEqual(job.result, None)
+        self.assertEqual(len(job.log), 2)
+        self.assertEqual(job.log[0]['msg'], "This is a log message")
+        self.assertRegex(job.log[1]['msg'], "Traceback")
 
 
 class TestJobLogHandler(GrimoireLabTestCase):
