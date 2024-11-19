@@ -28,7 +28,7 @@ import perceval.backend
 import perceval.backends
 import chronicler.eventizer
 
-from grimoirelab_toolkit.datetime import unixtime_to_datetime
+from grimoirelab_toolkit.datetime import str_to_datetime
 
 from ...scheduler.errors import NotFoundError
 
@@ -124,10 +124,8 @@ class ChroniclerProgress:
     def from_dict(cls, data: dict[str, Any]) -> ChroniclerProgress:
         """Create a new instance from a dictionary."""
 
-        def convert_to_datetime(unixtime: str) -> datetime | None:
-            if unixtime:
-                return unixtime_to_datetime(unixtime)
-            return None
+        def convert_to_datetime(dt: str) -> datetime | None:
+            return str_to_datetime(dt) if dt else None
 
         data_summary = data['summary']
 
