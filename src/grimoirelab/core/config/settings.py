@@ -114,7 +114,7 @@ ROOT_URLCONF = 'grimoirelab.core.app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -225,7 +225,9 @@ LOGGING = {
 #
 
 STATIC_URL = '/static/'
-
+STATICFILES_DIRS = [
+    BASE_DIR / 'templates/static'
+]
 
 # UI static files will be copied to the next path when
 # 'collectstatic' is run.
@@ -234,6 +236,10 @@ STATIC_URL = '/static/'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
+# MEDIA_URL is only needed when DEBUG is set to True.
+# Modify this URL if you want to run the server in developer mode.
+
+MEDIA_URL = 'http://media.localhost/'
 
 #
 # Default primary key field type

@@ -21,6 +21,10 @@ packages = [
     { include = "grimoirelab", from = "src" },
 ]
 
+exclude = [
+    "grimoirelab/core/static"
+]
+
 classifiers = [
    "Development Status :: 4 - Beta",
    "Intended Audience :: Developers",
