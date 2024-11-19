@@ -76,11 +76,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
             loggers=[__name__]
         )
 
-        logger = logging.getLogger(__name__)
-        logger.addHandler(grimoire_job.job_logger)
-        logger.setLevel(logging.INFO)
-
-        logger.info("This is a log message")
+        grimoire_job.add_log({'msg': "This is a log message"})
 
         self.assertEqual(len(grimoire_job.log), 1)
         self.assertEqual(grimoire_job.log[0]['msg'], "This is a log message")
@@ -104,7 +100,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         self.assertEqual(job.log[0]['msg'], "This is a log message")
 
         # Check if log handler is removed after execution
-        self.assertNotIn(job.job_logger,
+        self.assertNotIn(job._job_logger,
                          logging.getLogger(__name__).handlers)
 
 
@@ -114,16 +110,16 @@ class TestJobLogHandler(GrimoireLabTestCase):
     def test_init(self):
         """Tests whether the job handler initialization is correct"""
 
-        job = rq.job.Job(connection=self.conn)
+        job = GrimoireLabJob(connection=self.conn)
         meta_handler = JobLogHandler(job)
 
         self.assertEqual(meta_handler.job, job)
-        self.assertListEqual(meta_handler.job.meta['log'], [])
+        self.assertListEqual(meta_handler.job.log, [])
 
     def test_emit(self):
         """Tests whether messages are logged correctly"""
 
-        job = rq.job.Job(connection=self.conn)
+        job = GrimoireLabJob(connection=self.conn)
 
         meta_handler = JobLogHandler(job)
         logger = logging.getLogger(__name__)
@@ -135,9 +131,9 @@ class TestJobLogHandler(GrimoireLabTestCase):
         logger.info("This is an info message")
 
         # Check if the logs are saved in the job 'meta' field
-        self.assertEqual(len(job.meta['log']), 3)
-        self.assertEqual(sorted(list(job.meta['log'][0].keys())),
+        self.assertEqual(len(job.log), 3)
+        self.assertEqual(sorted(list(job.log[0].keys())),
                          ['created', 'level', 'module', 'msg'])
-        self.assertRegex(job.meta['log'][0]['msg'], 'error')
-        self.assertRegex(job.meta['log'][1]['msg'], 'warning')
-        self.assertRegex(job.meta['log'][2]['msg'], 'info')
+        self.assertRegex(job.log[0]['msg'], 'error')
+        self.assertRegex(job.log[1]['msg'], 'warning')
+        self.assertRegex(job.log[2]['msg'], 'info')

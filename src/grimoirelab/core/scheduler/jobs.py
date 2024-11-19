@@ -23,7 +23,6 @@ import typing
 
 import rq.job
 
-
 if typing.TYPE_CHECKING:
     from typing import Any
     from logging import LogRecord
@@ -51,7 +50,6 @@ class GrimoireLabJob(rq.job.Job):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.job_logger = JobLogHandler(self)
         self._loggers = self.PACKAGES_TO_LOG
         self.meta['log'] = []
         self.meta['progress'] = None
@@ -72,8 +70,6 @@ class GrimoireLabJob(rq.job.Job):
         # of the Job class parent.
         kwargs['meta'] = {'log': [], 'progress': None}
         job = super().create(func, *args, **kwargs)
-
-        job.job_logger = JobLogHandler(job)
         job._loggers = loggers if loggers else job.PACKAGES_TO_LOG
 
         return job
@@ -97,19 +93,28 @@ class GrimoireLabJob(rq.job.Job):
 
         return self.meta.get('log', [])
 
+    def add_log(self, log: dict[str, Any]) -> None:
+        """Add a log entry."""
+
+        self.meta['log'].append(log)
+        self.save_meta()
+
     def _add_log_handler(self):
         """Add the log handler to the job."""
+
+        self._job_logger = JobLogHandler(self)
+
         for logger_name in self._loggers:
             logger_job = logging.getLogger(logger_name)
             logger_job.setLevel(logging.INFO)
-            logger_job.addHandler(self.job_logger)
+            logger_job.addHandler(self._job_logger)
 
     def _remove_log_handler(self):
         """Remove the log handler from the job"""
 
         for logger_name in self._loggers:
             logger_job = logging.getLogger(logger_name)
-            logger_job.removeHandler(self.job_logger)
+            logger_job.removeHandler(self._job_logger)
 
     def _execute(self) -> Any:
         """Run the job."""
@@ -131,8 +136,6 @@ class JobLogHandler(logging.StreamHandler):
     def __init__(self, job: GrimoireLabJob) -> None:
         logging.StreamHandler.__init__(self)
         self.job = job
-        self.job.meta['log'] = []
-        self.job.save_meta()
 
     def emit(self, record: LogRecord) -> None:
         """Emit a log entry storing it in the job metadata.
@@ -145,5 +148,4 @@ class JobLogHandler(logging.StreamHandler):
             'module': record.module,
             'level': self.level,
         }
-        self.job.meta['log'].append(log)
-        self.job.save_meta()
+        self.job.add_log(log)
