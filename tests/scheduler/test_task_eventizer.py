@@ -221,9 +221,9 @@ class TestChroniclerProgress(GrimoireLabTestCase):
             'summary': {
                 'fetched': 10,
                 'skipped': 2,
-                'min_updated_on': 1609459200.0,  # 2021-01-01
-                'max_updated_on': 1609545600.0,  # 2021-01-02
-                'last_updated_on': 1609632000.0,  # 2021-01-03
+                'min_updated_on': '2021-01-01 00:00:0+00:00',
+                'max_updated_on': '2021-01-02 00:00:0+00:00',
+                'last_updated_on': '2021-01-03 00:00:0+00:00',
                 'last_uuid': 'abc123',
                 'min_offset': 1,
                 'max_offset': 10,
