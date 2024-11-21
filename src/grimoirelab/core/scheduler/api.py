@@ -16,6 +16,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import django_rq
+
 from rest_framework import (
     generics,
     pagination,
@@ -23,10 +25,14 @@ from rest_framework import (
     serializers,
 )
 
+from .models import (
+    SchedulerStatus,
+    get_registered_task_model
+)
 from .tasks.models import EventizerTask
 
 
-class EventizerTaskPaginator(pagination.PageNumberPagination):
+class EventizerPaginator(pagination.PageNumberPagination):
     page_size = 25
     page_size_query_param = 'size'
     max_page_size = 100
@@ -55,7 +61,102 @@ class EventizerTaskListSerializer(serializers.ModelSerializer):
         ]
 
 
-class EventizerTaskList(generics.ListCreateAPIView):
+class EventizerJobListSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='get_status_display')
+
+    class Meta:
+        model = get_registered_task_model('eventizer')[1]
+        fields = [
+            'uuid', 'job_num', 'status', 'scheduled_at',
+            'finished_at', 'queue'
+        ]
+
+
+class EventizerTaskSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='get_status_display')
+
+    class Meta:
+        model = EventizerTask
+        fields = [
+            'uuid', 'status', 'runs', 'failures', 'last_run',
+            'job_interval', 'scheduled_at',
+            'datasource_type', 'datasource_category'
+        ]
+
+
+class EventizerJobSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='get_status_display')
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = get_registered_task_model('eventizer')[1]
+        fields = [
+            'uuid', 'job_num', 'status', 'scheduled_at',
+            'finished_at', 'queue', 'progress'
+        ]
+
+    def get_progress(self, obj):
+        if obj.status == SchedulerStatus.RUNNING:
+            rq_job = django_rq.get_queue(obj.queue).fetch_job(obj.uuid)
+            if rq_job:
+                return rq_job.progress.to_dict()
+        return obj.progress
+
+
+class EventizerJobLogsSerializer(serializers.ModelSerializer):
+    logs = serializers.SerializerMethodField()
+
+    class Meta:
+        model = get_registered_task_model('eventizer')[1]
+        fields = [
+            'uuid', 'logs'
+        ]
+
+    def get_logs(self, obj):
+        if obj.status == SchedulerStatus.RUNNING:
+            rq_job = django_rq.get_queue(obj.queue).fetch_job(obj.uuid)
+            if rq_job:
+                return rq_job.log
+        return obj.logs
+
+
+class EventizerTaskList(generics.ListAPIView):
     queryset = EventizerTask.objects.all()
     serializer_class = EventizerTaskListSerializer
-    pagination_class = EventizerTaskPaginator
+    pagination_class = EventizerPaginator
+
+
+class EventizerTaskDetail(generics.RetrieveAPIView):
+    queryset = EventizerTask.objects.all()
+    lookup_field = 'uuid'
+    serializer_class = EventizerTaskSerializer
+    pagination_class = EventizerPaginator
+
+
+class EventizerJobList(generics.ListAPIView):
+    serializer_class = EventizerJobListSerializer
+    pagination_class = EventizerPaginator
+
+    def get_queryset(self):
+        task_id = self.kwargs['task_id']
+        return get_registered_task_model('eventizer')[1].objects.filter(task__uuid=task_id)
+
+
+class EventizerJobDetail(generics.RetrieveAPIView):
+    lookup_field = 'uuid'
+    serializer_class = EventizerJobSerializer
+    pagination_class = EventizerPaginator
+
+    def get_queryset(self):
+        task_id = self.kwargs['task_id']
+        return get_registered_task_model('eventizer')[1].objects.filter(task__uuid=task_id)
+
+
+class EventizerJobLogs(generics.RetrieveAPIView):
+    lookup_field = 'uuid'
+    serializer_class = EventizerJobLogsSerializer
+    pagination_class = EventizerPaginator
+
+    def get_queryset(self):
+        task_id = self.kwargs['task_id']
+        return get_registered_task_model('eventizer')[1].objects.filter(task__uuid=task_id)
