@@ -285,7 +285,8 @@ RQ_QUEUES = {
 }
 
 RQ = {
-    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.GrimoireLabJob'
+    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.GrimoireLabJob',
+    'WORKER_CLASS': 'grimoirelab.core.scheduler.worker.GrimoireLabWorker',
 }
 
 #
