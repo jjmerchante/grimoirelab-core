@@ -16,10 +16,17 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from django.urls import re_path
+from django.urls import path, re_path
 
+from . import api
 from . import views
+
 
 urlpatterns = [
     re_path(r'^add_task', views.add_task),
+    path('tasks/', api.EventizerTaskList.as_view()),
+    path('tasks/<str:uuid>/', api.EventizerTaskDetail.as_view()),
+    path('tasks/<str:task_id>/jobs/', api.EventizerJobList.as_view()),
+    path('tasks/<str:task_id>/jobs/<str:uuid>/', api.EventizerJobDetail.as_view()),
+    path('tasks/<str:task_id>/jobs/<str:uuid>/logs/', api.EventizerJobLogs.as_view()),
 ]
