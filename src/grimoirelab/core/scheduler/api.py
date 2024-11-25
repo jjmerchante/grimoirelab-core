@@ -52,13 +52,19 @@ class EventizerPaginator(pagination.PageNumberPagination):
 
 class EventizerTaskListSerializer(serializers.ModelSerializer):
     status = serializers.CharField(source='get_status_display')
+    last_jobs = serializers.SerializerMethodField()
 
     class Meta:
         model = EventizerTask
         fields = [
-            'uuid', 'status', 'runs', 'failures', 'last_run',
-            'scheduled_at', 'datasource_type', 'datasource_category',
+            'uuid', 'status', 'runs', 'failures', 'last_run', 'last_jobs',
+            'scheduled_at', 'datasource_type', 'datasource_category'
         ]
+
+    def get_last_jobs(self, obj):
+        job_klass = get_registered_task_model('eventizer')[1]
+        jobs = job_klass.objects.filter(task=obj).order_by('-job_num')[:10]
+        return EventizerJobSummarySerializer(jobs, many=True).data
 
 
 class EventizerJobListSerializer(serializers.ModelSerializer):
@@ -80,7 +86,17 @@ class EventizerTaskSerializer(serializers.ModelSerializer):
         fields = [
             'uuid', 'status', 'runs', 'failures', 'last_run',
             'job_interval', 'scheduled_at',
-            'datasource_type', 'datasource_category'
+            'datasource_type', 'datasource_category',
+        ]
+
+
+class EventizerJobSummarySerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='get_status_display')
+
+    class Meta:
+        model = get_registered_task_model('eventizer')[1]
+        fields = [
+            'uuid', 'job_num', 'status', 'scheduled_at', 'finished_at'
         ]
 
 
@@ -121,7 +137,7 @@ class EventizerJobLogsSerializer(serializers.ModelSerializer):
 
 
 class EventizerTaskList(generics.ListAPIView):
-    queryset = EventizerTask.objects.all()
+    queryset = EventizerTask.objects.all().order_by('-scheduled_at')
     serializer_class = EventizerTaskListSerializer
     pagination_class = EventizerPaginator
 
