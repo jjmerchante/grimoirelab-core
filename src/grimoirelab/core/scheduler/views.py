@@ -37,8 +37,8 @@ def add_task(request):
     {
         'type': 'eventizer',
         'task_args': {
-            'backend": 'git',
-            'category": 'commit',
+            'datasource_type': 'git',
+            'datasource_category': 'commit',
             'backend_args': {
                 'uri': 'https://github.com/chaoss/grimoirelab.git'
             }
@@ -67,8 +67,8 @@ def add_task(request):
 
     task = schedule_task(
         task_type, task_args,
-        datasource_type=data['task_args']['backend'],
-        datasource_category=data['task_args']['category'],
+        datasource_type=data['task_args']['datasource_type'],
+        datasource_category=data['task_args']['datasource_category'],
         job_interval=job_interval,
         job_max_retries=job_max_retries
     )
