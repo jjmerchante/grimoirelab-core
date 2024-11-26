@@ -54,6 +54,7 @@ def _setup():
 
     _create_database()
     _setup_database()
+    _install_static_files()
 
     click.secho("\nGrimoirelab configuration completed", fg='bright_cyan')
 
@@ -94,6 +95,20 @@ def _setup_database(database: str = 'default'):
                 fg='bright_cyan')
 
     django.core.management.call_command('migrate', database=database)
+
+    click.echo()
+
+
+def _install_static_files():
+    """Collect static files and install them."""
+
+    click.secho('## GrimoireLab static files installation\n',
+                fg='bright_cyan')
+
+    django.core.management.call_command('collectstatic',
+                                        ignore=['admin', 'rest_framework'],
+                                        clear=True,
+                                        interactive=False)
 
     click.echo()
 

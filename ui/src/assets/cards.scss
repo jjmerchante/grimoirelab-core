@@ -1,0 +1,9 @@
+.v-card--variant-outlined {
+  background: rgb(var(--v-theme-surface));
+  border: thin solid rgba(0, 0, 0, 0.08);
+  border-left: 6px solid rgb(var(--v-border-color));
+}
+
+.v-chip.v-chip--density-compact {
+  height: calc(var(--v-chip-height) + -6px);
+}
