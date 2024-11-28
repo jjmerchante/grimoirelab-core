@@ -293,8 +293,13 @@ class GitArgumentGenerator(ChroniclerArgumentGenerator):
         if progress.summary and progress.summary.last_offset:
             job_args['recovery_commit'] = progress.summary.last_offset
             job_args['latest_items'] = False
-        else:
+        elif progress.summary:
             job_args['latest_items'] = True
+        else:
+            # Something went wrong on the side of the worker.
+            # The only thing we can do is to start over,
+            # without retrieving the latest items.
+            job_args['latest_items'] = False
 
         return job_args
 
