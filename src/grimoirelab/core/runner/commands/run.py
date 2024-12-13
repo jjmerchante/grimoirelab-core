@@ -23,6 +23,11 @@ import typing
 
 import click
 import django.core
+import django.core.wsgi
+
+from django.conf import settings
+
+from grimoirelab.core.scheduler.scheduler import maintain_tasks
 
 if typing.TYPE_CHECKING:
     from click import Context
@@ -59,9 +64,6 @@ def server(ctx: Context, devel: bool):
 
     if devel:
         env["GRIMOIRELAB_DEBUG"] = "true"
-
-        from django.conf import settings
-
         env["UWSGI_HTTP"] = env.get("GRIMOIRELAB_HTTP_DEV", "127.0.0.1:8000")
         env["UWSGI_STATIC_MAP"] = settings.STATIC_URL + "=" + settings.STATIC_ROOT
     else:
@@ -80,6 +82,11 @@ def server(ctx: Context, devel: bool):
     env["UWSGI_LAZY_APPS"] = "true"
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
+    # Run maintenance tasks
+    _ = django.core.wsgi.get_wsgi_application()
+    maintain_tasks()
+
+    # Run the server
     os.execvp("uwsgi", ("uwsgi",))
 
 
@@ -101,8 +108,6 @@ def eventizers(workers: int):
     Workers get jobs from the Q_PERCEVAL_JOBS queue defined in the
     configuration file.
     """
-    from django.conf import settings
-
     django.core.management.call_command(
         'rqworker-pool', settings.Q_PERCEVAL_JOBS,
         num_workers=workers
