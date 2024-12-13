@@ -20,11 +20,13 @@ import django.db
 import django.test.utils
 
 from grimoirelab.core.scheduler.db import (
+    find_tasks_by_status,
     find_task,
     find_job
 )
 from grimoirelab.core.scheduler.errors import NotFoundError
 from grimoirelab.core.scheduler.models import (
+    SchedulerStatus,
     Task,
     register_task_model,
     GRIMOIRELAB_TASK_MODELS
@@ -43,6 +45,92 @@ class AnotherDummyTaskDB(Task):
     """Class for testing the task register"""
 
     TASK_TYPE = 'another_dummy_task'
+
+
+class TestFindTasksByStatus(GrimoireLabTestCase):
+    """Unit tests for find_task_by_status function"""
+
+    @classmethod
+    def setUpClass(cls):
+        _, cls.DummyJobClass = register_task_model('dummy_task', DummyTaskDB)
+        _, cls.AnotherDummyJobClass = register_task_model('another_dummy_task', AnotherDummyTaskDB)
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        GRIMOIRELAB_TASK_MODELS.clear()
+        super().tearDownClass()
+
+    def setUp(self):
+        """Create the test model"""
+
+        def cleanup_test_model():
+            with django.db.connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(self.DummyJobClass)
+                schema_editor.delete_model(DummyTaskDB)
+                schema_editor.delete_model(self.AnotherDummyJobClass)
+                schema_editor.delete_model(AnotherDummyTaskDB)
+
+        with django.db.connection.schema_editor() as schema_editor:
+            schema_editor.create_model(DummyTaskDB)
+            schema_editor.create_model(self.DummyJobClass)
+            schema_editor.create_model(AnotherDummyTaskDB)
+            schema_editor.create_model(self.AnotherDummyJobClass)
+
+        self.addCleanup(cleanup_test_model)
+        super().setUp()
+
+    def test_find_tasks_by_status(self):
+        """Find a task by status"""
+
+        dummy_task = DummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        dummy_task.status = SchedulerStatus.NEW
+        dummy_task.save()
+
+        another_dummy_task = AnotherDummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        another_dummy_task.status = SchedulerStatus.NEW
+        another_dummy_task.save()
+
+        task = AnotherDummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        task.status = SchedulerStatus.RUNNING
+        task.save()
+
+        task = DummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        task.status = SchedulerStatus.FAILED
+        task.save()
+
+        expected = {
+            dummy_task, another_dummy_task, task
+        }
+
+        result = find_tasks_by_status([SchedulerStatus.NEW, SchedulerStatus.FAILED])
+        self.assertSetEqual(set(result), expected)
+
+    def test_find_tasks_empty(self):
+        """No tasks are found for a given status"""
+
+        dummy_task = DummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        dummy_task.status = SchedulerStatus.NEW
+        dummy_task.save()
+
+        another_dummy_task = AnotherDummyTaskDB.create_task(
+            {'arg': 'value'}, 15, 10
+        )
+        another_dummy_task.status = SchedulerStatus.RUNNING
+        another_dummy_task.save()
+
+        result = find_tasks_by_status([SchedulerStatus.FAILED])
+        self.assertSetEqual(set(result), set())
 
 
 class TestFindTask(GrimoireLabTestCase):

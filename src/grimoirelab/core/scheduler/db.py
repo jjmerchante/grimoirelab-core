@@ -20,12 +20,24 @@ from __future__ import annotations
 
 import typing
 
-from .models import get_all_registered_task_models
+from .models import SchedulerStatus, get_all_registered_task_models
 from .errors import NotFoundError
 
 
 if typing.TYPE_CHECKING:
+    from typing import Iterator
     from .models import Task, Job
+
+
+def find_tasks_by_status(statuses: list[SchedulerStatus]) -> Iterator[Task]:
+    """Find tasks by their status.
+
+    :param statuses: list of status to filter tasks by.
+
+    :returns: iterator of tasks with the given status.
+    """
+    for task_class, _ in get_all_registered_task_models():
+        yield from task_class.objects.filter(status__in=statuses).iterator()
 
 
 def find_task(task_uuid: str) -> Task:
