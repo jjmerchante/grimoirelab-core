@@ -35,6 +35,7 @@ from grimoirelab.core.scheduler.models import (
 from grimoirelab.core.scheduler.scheduler import (
     schedule_task,
     cancel_task,
+    maintain_tasks,
     _enqueue_task,
     _on_success_callback,
     _on_failure_callback
@@ -214,6 +215,118 @@ class TestScheduleTask(GrimoireLabTestCase):
             }
             task = SchedulerTestTask.create_task(task_args, 360, 10)
             _enqueue_task(task, scheduled_at=None)
+
+
+class TestMaintainTasks(GrimoireLabTestCase):
+    """Class for testing the maintenance of tasks"""
+
+    def setUp(self):
+        GRIMOIRELAB_TASK_MODELS.clear()
+        task_class, job_class = register_task_model('test_task', SchedulerTestTask)
+
+        def cleanup_test_model():
+            with django.db.connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(job_class)
+                schema_editor.delete_model(task_class)
+
+        with django.db.connection.schema_editor() as schema_editor:
+            schema_editor.create_model(task_class)
+            schema_editor.create_model(job_class)
+
+        self.addCleanup(cleanup_test_model)
+        super().setUp()
+
+    def test_maintain_tasks_reschedule(self):
+        """Tasks with inconsistent state are re-scheduled"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+
+        task1 = schedule_task('test_task', task_args)
+        task2 = schedule_task('test_task', task_args)
+
+        # Delete one of the jobs manually to create the inconsistent state
+        job_db = task2.jobs.first()
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+        # Run the maintenance tasks
+        before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        maintain_tasks()
+        after_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        # Check if jobs were re-scheduled
+
+        # Task1 was't re-scheduled
+        job_db = task1.jobs.first()
+        self.assertLessEqual(job_db.last_modified, before_dt)
+        self.assertLessEqual(job_db.last_modified, after_dt)
+
+        # Task2 was re-scheduler
+        job_db = task2.jobs.first()
+        self.assertGreaterEqual(job_db.last_modified, before_dt)
+        self.assertLessEqual(job_db.last_modified, after_dt)
+
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        self.assertEqual(job_rq.id, job_db.uuid)
+
+    def test_maintain_tasks_reschedule_expired_scheduled_at(self):
+        """Tasks with inconsistent state with expired scheduled time are re-scheduled with current time"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+
+        before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        task = schedule_task('test_task', task_args)
+        before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        # Delete job manually to create the inconsistent state
+        job_db = task.jobs.first()
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+        # Run the maintenance tasks
+        before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        maintain_tasks()
+        after_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        # Check if jobs were re-scheduled with a different time
+        job_db = task.jobs.first()
+        self.assertLessEqual(task.scheduled_at, before_dt)
+        self.assertLessEqual(task.scheduled_at, after_dt)
+
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        self.assertEqual(job_rq.id, job_db.uuid)
+
+    def test_maintain_tasks_reschedule_non_expired_scheduled_at(self):
+        """Tasks with inconsistent state are re-scheduled keeping the same scheduled time"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+        schedule_time = datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)
+
+        task = SchedulerTestTask.create_task(task_args, 360, 10)
+        job_db = _enqueue_task(task, scheduled_at=schedule_time)
+
+        # Delete job manually to create the inconsistent state
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+        # Run the maintenance tasks
+        maintain_tasks()
+
+        # Check if jobs were re-scheduled with a different time
+        job_db = task.jobs.first()
+        self.assertLessEqual(task.scheduled_at, schedule_time)
+
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        self.assertEqual(job_rq.id, job_db.uuid)
 
 
 class OnSuccessCallbackTestTask(Task):

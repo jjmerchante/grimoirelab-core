@@ -24,6 +24,7 @@ import typing
 import uuid
 
 import django_rq
+import rq.exceptions
 import rq.job
 
 from django.conf import settings
@@ -31,6 +32,7 @@ from django.conf import settings
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
 from .db import (
+    find_tasks_by_status,
     find_job,
     find_task
 )
@@ -104,6 +106,38 @@ def cancel_task(task_uuid: str) -> None:
     task.delete()
 
 
+def maintain_tasks() -> None:
+    """Maintain the tasks that are scheduled to be executed.
+
+    This function will check the status of the tasks and jobs
+    that are scheduled, rescheduling them if necessary.
+    """
+    tasks = find_tasks_by_status(
+        [
+            SchedulerStatus.RUNNING,
+            SchedulerStatus.RECOVERY,
+            SchedulerStatus.ENQUEUED,
+            SchedulerStatus.NEW
+        ]
+    )
+
+    for task in tasks:
+        job_db = task.jobs.order_by('scheduled_at').first()
+
+        try:
+            rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+            continue
+        except rq.exceptions.NoSuchJobError:
+            logger.debug(
+                f"Job #{job_db.job_id} in queue (task: {task.task_id}) missing. Rescheduling."
+            )
+
+        current_time = datetime_utcnow()
+        scheduled_at = task.scheduled_at if task.scheduled_at > current_time else current_time
+
+        _schedule_job(task, job_db, scheduled_at, job_db.job_args)
+
+
 def _enqueue_task(
     task: Task,
     scheduled_at: datetime.datetime | None = None
@@ -138,9 +172,29 @@ def _enqueue_task(
         task=task
     )
 
+    _schedule_job(task, job, scheduled_at, job_args)
+
+    logger.info(
+        f"Job #{job.job_id} (task: {task.task_id})"
+        f" enqueued in '{job.queue}' at {scheduled_at}"
+    )
+
+    return job
+
+
+def _schedule_job(
+    task: Task,
+    job: Job,
+    scheduled_at: datetime.datetime,
+    job_args: dict[str, Any]
+) -> rq.job.Job:
+    """Schedule the job to be executed."""
+
+    queue = task.default_job_queue
+
     try:
         queue_rq = django_rq.get_queue(queue)
-        queue_rq.enqueue_at(
+        rq_job = queue_rq.enqueue_at(
             datetime=scheduled_at,
             f=task.job_function,
             result_ttl=settings.GRIMOIRELAB_JOB_RESULT_TTL,
@@ -163,12 +217,7 @@ def _enqueue_task(
         job.save()
         task.save()
 
-    logger.info(
-        f"Job #{job.job_id} (task: {task.task_id})"
-        f" enqueued in '{job.queue}' at {scheduled_at}"
-    )
-
-    return job
+    return rq_job
 
 
 def _on_success_callback(
