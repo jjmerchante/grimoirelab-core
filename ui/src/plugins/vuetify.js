@@ -41,10 +41,6 @@ export default createVuetify({
     VAlert: {
       variant: 'tonal'
     },
-    VBtn: {
-      variant: 'outlined',
-      size: 'small'
-    },
     VCombobox: {
       variant: 'outlined',
       density: 'comfortable'

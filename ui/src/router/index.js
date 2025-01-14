@@ -27,6 +27,34 @@ const router = createRouter({
           component: () => import('../views/Task/ListView.vue')
         },
         {
+          path: 'new',
+          name: 'newTaskList',
+          meta: {
+            breadcrumb: {
+              title: 'New task',
+              to: { name: 'newTask' }
+            }
+          },
+          children: [
+            {
+              path: '',
+              name: 'newTask',
+              component: () => import('../views/Task/NewTask.vue')
+            },
+            {
+              path: 'sbom',
+              name: 'loadSbom',
+              meta: {
+                breadcrumb: {
+                  title: 'Load SBoM',
+                  to: { name: 'loadSbom' }
+                }
+              },
+              component: () => import('../views/Task/LoadSbom.vue')
+            }
+          ]
+        },
+        {
           path: ':id',
           name: 'task',
           meta: {

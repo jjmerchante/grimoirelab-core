@@ -1,14 +1,16 @@
 <template>
   <v-dialog v-model="isOpen" max-width="600">
     <template #activator="{ props: activatorProps }">
-      <v-btn
-        class="ml-auto"
-        color="secondary"
-        prepend-icon="mdi-plus"
-        text="Add"
-        variant="flat"
-        v-bind="activatorProps"
-      ></v-btn>
+      <slot name="activator" v-bind="{ props: activatorProps }">
+        <v-btn
+          class="ml-auto"
+          color="secondary"
+          prepend-icon="mdi-plus"
+          text="Add"
+          variant="flat"
+          v-bind="activatorProps"
+        ></v-btn>
+      </slot>
     </template>
 
     <v-card title="Schedule task">
@@ -47,29 +49,10 @@
           </v-col>
         </v-row>
         <v-row>
-          <v-col cols="6">
-            <v-radio-group
-              v-model="formData.scheduler.job_interval"
-              density="comfortable"
-              size="small"
-            >
-              <template #label>
-                <span class="text-subtitle-2">Interval</span>
-              </template>
-              <v-radio :value="86400" label="Every day"></v-radio>
-              <v-radio :value="604800" label="Every week"></v-radio>
-              <v-radio value="custom" label="Custom"></v-radio>
-            </v-radio-group>
-            <v-text-field
-              v-model="customInterval"
-              class="ml-8"
-              label="Every"
-              type="number"
-              suffix="seconds"
-              hide-details
-              required
-            >
-            </v-text-field>
+          <v-col>
+            <p class="text-subtitle-2 mb-4">Schedule</p>
+            <interval-selector v-model="formData.scheduler.job_interval" density="comfortable">
+            </interval-selector>
           </v-col>
         </v-row>
       </v-card-text>
@@ -83,8 +66,11 @@
   </v-dialog>
 </template>
 <script>
+import IntervalSelector from './IntervalSelector.vue'
+
 export default {
   name: 'FormDialog',
+  components: { IntervalSelector },
   emits: ['create'],
   data() {
     return {
@@ -99,7 +85,7 @@ export default {
           }
         },
         scheduler: {
-          job_interval: 604800,
+          job_interval: '604800',
           job_max_retries: 1
         }
       },
@@ -108,9 +94,6 @@ export default {
   },
   methods: {
     onSave() {
-      if (this.formData.scheduler.job_interval === 'custom') {
-        this.formData.scheduler.job_interval = this.customInterval
-      }
       this.$emit('create', this.formData)
       this.isOpen = false
     }
