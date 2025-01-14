@@ -56,3 +56,27 @@ jobs:
     - name: Tests
       run: |
         poetry run python manage.py test --settings=config.settings.testing
+
+  frontend:
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    runs-on: ubuntu-latest
+    name: Node ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # 4.0.1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install dependencies
+        working-directory: ./ui
+        run: yarn install
+      - name: Run ESLint
+        working-directory: ./ui
+        run: yarn lint
+      - name: Run unit tests
+        working-directory: ./ui
+        run: yarn test:unit
