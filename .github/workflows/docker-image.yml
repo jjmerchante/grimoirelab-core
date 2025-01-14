@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build package using Poetry and store result
-        uses: chaoss/grimoirelab-github-actions/build@master
+        uses: chaoss/grimoirelab-github-actions/build@main
         with:
           artifact-name: grimoirelab-core-dist
           artifact-path: dist
