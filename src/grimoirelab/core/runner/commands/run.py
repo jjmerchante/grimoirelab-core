@@ -27,8 +27,6 @@ import django.core.wsgi
 
 from django.conf import settings
 
-from grimoirelab.core.scheduler.scheduler import maintain_tasks
-
 if typing.TYPE_CHECKING:
     from click import Context
 
@@ -83,6 +81,8 @@ def server(ctx: Context, devel: bool):
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
     # Run maintenance tasks
+    from grimoirelab.core.scheduler.scheduler import maintain_tasks
+
     _ = django.core.wsgi.get_wsgi_application()
     maintain_tasks()
 
@@ -105,10 +105,10 @@ def eventizers(workers: int):
     The number of workers running in the pool can be defined with the
     parameter '--workers'.
 
-    Workers get jobs from the Q_PERCEVAL_JOBS queue defined in the
-    configuration file.
+    Workers get jobs from the GRIMOIRELAB_Q_EVENTIZER_JOBS queue defined
+    in the configuration file.
     """
     django.core.management.call_command(
-        'rqworker-pool', settings.Q_PERCEVAL_JOBS,
+        'rqworker-pool', settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
         num_workers=workers
     )

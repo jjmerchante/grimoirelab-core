@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 def chronicler_job(
     datasource_type: str,
     datasource_category: str,
-    events_queue: str,
+    events_stream: str,
+    stream_max_length: int,
     job_args: dict[str, Any] = None
 ) -> ChroniclerProgress:
     """Fetch and eventize data.
@@ -61,6 +62,8 @@ def chronicler_job(
         (e.g., 'git', 'github')
     :param datasource_category: category of the datasource
         (e.g., 'pull_request', 'issue')
+    :param events_stream: Redis queue where the events will be published
+    :param stream_max_length: maximum length of the stream
     :param job_args: extra arguments to pass to the job
         (e.g., 'url', 'owner', 'repository')
     """
@@ -95,7 +98,11 @@ def chronicler_job(
                                                perceval_gen.items)
         for event in events:
             data = cloudevents.conversion.to_json(event)
-            rq_job.connection.rpush(events_queue, data)
+            message = {
+                'data': data
+            }
+            rq_job.connection.xadd(events_stream, message,
+                                   maxlen=stream_max_length)
     finally:
         progress.summary = perceval_gen.summary
 
@@ -254,7 +261,7 @@ class GitArgumentGenerator(ChroniclerArgumentGenerator):
         from django.conf import settings
 
         # For the first run, make some arguments mandatory
-        base_path = os.path.expanduser(settings.GIT_STORAGE_PATH)
+        base_path = os.path.expanduser(settings.GRIMOIRELAB_GIT_STORAGE_PATH)
         uri = task_args['uri']
         processed_uri = uri.lstrip('/')
         git_path = os.path.join(base_path, processed_uri) + '-git'

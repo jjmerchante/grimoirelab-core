@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import typing
 
+from django.conf import settings
 from django.db.models import CharField
 
 from ...scheduler.models import (
@@ -117,7 +118,8 @@ class EventizerTask(Task):
         task_args = {
             'datasource_type': self.datasource_type,
             'datasource_category': self.datasource_category,
-            'events_queue': 'events'
+            'events_stream': settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+            'stream_max_length': settings.GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH,
         }
 
         args_gen = get_chronicler_argument_generator(self.datasource_type)
@@ -146,7 +148,7 @@ class EventizerTask(Task):
 
     @property
     def default_job_queue(self):
-        return 'default'
+        return settings.GRIMOIRELAB_Q_EVENTIZER_JOBS
 
     @staticmethod
     def job_function(*args, **kwargs):
