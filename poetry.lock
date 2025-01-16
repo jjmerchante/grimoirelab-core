@@ -623,24 +623,20 @@ pyflakes = ">=3.2.0,<3.3.0"
 
 [[package]]
 name = "grimoirelab-chronicler"
-version = "0.0.1-rc.2"
+version = "0.0.1rc2"
 description = "Generator of GrimoireLab events using Perceval data."
 optional = false
-python-versions = "^3.11"
+python-versions = "<4.0,>=3.11"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "grimoirelab_chronicler-0.0.1rc2-py3-none-any.whl", hash = "sha256:766dfb980a1775cb83231546aecbdf964473c992489b23396fe2ea72ec369fe2"},
+    {file = "grimoirelab_chronicler-0.0.1rc2.tar.gz", hash = "sha256:61f68e4c60d1674ab76dc4aaf2d0e65f23b2c272003f09eeb9b89f33a423b933"},
+]
 
 [package.dependencies]
-click = "^8.1.7"
-cloudevents = "^1.10.1"
-coverage = "^7.2.3"
-
-[package.source]
-type = "git"
-url = "https://github.com/grimoirelab/grimoirelab-chronicler.git"
-reference = "HEAD"
-resolved_reference = "481c963e83dd92688aec5c28f6ea1ea78854be5b"
+click = ">=8.1.7,<9.0.0"
+cloudevents = ">=1.10.1,<2.0.0"
+coverage = ">=7.2.3,<8.0.0"
 
 [[package]]
 name = "grimoirelab-toolkit"
@@ -983,4 +979,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "a55cdfda9bca58b26a880805697a9fef438c16d8aaa766141d30d35fe4777afa"
+content-hash = "173339632652be2703b390e78958f5522df2fa128dc3a84453276b9e1aaf8a97"
