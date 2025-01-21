@@ -21,8 +21,11 @@ packages = [
     { include = "grimoirelab", from = "src" },
 ]
 
-exclude = [
-    "grimoirelab/core/static"
+include = [
+    { path = "grimoirelab/core/templates" },
+    { path = "AUTHORS", format = "sdist" },
+    { path = "NEWS", format = "sdist" },
+    { path = "README.md", format = "sdist" },
 ]
 
 classifiers = [

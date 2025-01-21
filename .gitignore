@@ -5,7 +5,6 @@ build
 
 # Package files
 src/grimoirelab/core/static
-src/grimoirelab/core/templates
 
 # JavaScript files
 node_modules
