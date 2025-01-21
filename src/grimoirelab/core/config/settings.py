@@ -273,9 +273,7 @@ REST_FRAMEWORK = {
 # https://github.com/rq/django-rq
 #
 
-Q_PERCEVAL_JOBS = os.environ.get('GRIMOIRELAB_Q_PERCEVAL_JOBS', 'default')
-Q_STORAGE_ITEMS = os.environ.get('GRIMOIRELAB_Q_STORAGE_ITEMS', 'items')
-Q_EVENTS = os.environ.get('GRIMOIRELAB_Q_EVENTS', 'events')
+GRIMOIRELAB_Q_EVENTIZER_JOBS = os.environ.get('GRIMOIRELAB_Q_EVENTIZER_JOBS', 'default')
 
 _RQ_DATABASE = {
     'HOST': os.environ.get('GRIMOIRELAB_REDIS_HOST', '127.0.0.1'),
@@ -285,10 +283,16 @@ _RQ_DATABASE = {
 }
 
 RQ_QUEUES = {
-    Q_PERCEVAL_JOBS: _RQ_DATABASE,
-    Q_STORAGE_ITEMS: _RQ_DATABASE,
-    Q_EVENTS: _RQ_DATABASE,
+    GRIMOIRELAB_Q_EVENTIZER_JOBS: _RQ_DATABASE,
 }
+
+GRIMOIRELAB_EVENTS_STREAM_NAME = os.environ.get('GRIMOIRELAB_EVENTS_STREAM_NAME',
+                                                'events')
+# Maximum events in Redis stream before dropping. Consumers must process events
+# faster than production to avoid loss. Default max size is 1M events (~2.5GB Git events).
+# Adjust for memory constraints.
+GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH = int(os.environ.get('GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH',
+                                                          1 * 10 ** 6))
 
 RQ = {
     'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.GrimoireLabJob',
@@ -304,4 +308,4 @@ GRIMOIRELAB_JOB_MAX_RETRIES = int(os.environ.get('GRIMOIRELAB_JOB_MAX_RETRIES', 
 GRIMOIRELAB_JOB_RESULT_TTL = int(os.environ.get('GRIMOIRELAB_JOB_RESULT_TTL', 300))
 GRIMOIRELAB_JOB_TIMEOUT = int(os.environ.get('GRIMOIRELAB_JOB_TIMEOUT', -1))
 
-GIT_STORAGE_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')
+GRIMOIRELAB_GIT_STORAGE_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')
