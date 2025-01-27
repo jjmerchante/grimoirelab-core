@@ -37,7 +37,7 @@ if typing.TYPE_CHECKING:
     from datetime import datetime
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('chronicler')
 
 
 def chronicler_job(

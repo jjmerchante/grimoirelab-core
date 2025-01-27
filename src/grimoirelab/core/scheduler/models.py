@@ -357,3 +357,11 @@ def get_all_registered_task_models() -> Iterator[type[Task], type[Job]]:
         job classes.
     """
     return iter(GRIMOIRELAB_TASK_MODELS.values())
+
+
+def get_all_registered_task_names() -> list[str]:
+    """Return all registered task names.
+
+    :returns: a list with all registered task names.
+    """
+    return list(GRIMOIRELAB_TASK_MODELS.keys())

@@ -67,6 +67,7 @@ class FakeRedisConn:
         return self.conn
 
 
+RQ_QUEUES['default'] = _RQ_DATABASE  # noqa: F405
 RQ_QUEUES['testing'] = _RQ_DATABASE  # noqa: F405
 RQ['WORKER_CLASS'] = rq.worker.SimpleWorker
 
