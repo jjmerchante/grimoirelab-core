@@ -38,6 +38,7 @@ from .chronicler import (
     ChroniclerProgress,
     get_chronicler_argument_generator
 )
+from .archivist import archivist_job
 
 if typing.TYPE_CHECKING:
     from typing import Any, Self
@@ -163,4 +164,96 @@ class EventizerTask(Task):
         return _on_failure_callback(*args, **kwargs)
 
 
+class StorageTask(Task):
+    """Task to store events in a database.
+
+    This task will store events in a database. Events will be fetched
+    from a Redis stream. The progress of the task can be accessed through
+    the property `progress`. The result of the task can be obtained
+    accessing to the property `result` of the object.
+    """
+
+    storage_type = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+
+    TASK_TYPE = 'storager'
+
+    @classmethod
+    def create_task(
+        cls,
+        task_args: dict[str, Any],
+        job_interval: int,
+        job_max_retries: int,
+        storage_type: str,
+        burst: bool = False,
+        *args, **kwargs
+    ) -> Self:
+        """Create a new task to store events in a database.
+
+        This method will create a new task to store events in a database.
+        Besides the common arguments to create a task, this method requires
+        the name of the Redis stream where events are published.
+
+        :param task_args: arguments to pass to the task
+        :param job_interval: interval in seconds between each task execution.
+        :param job_max_retries: maximum number of retries before the task is
+            considered failed.
+        :param storage_type: type of storage to use.
+        :param burst: flag to indicate if the task will only run once.
+        :param args: additional arguments.
+        :param kwargs: additional keyword arguments.
+
+        :return: the new task created.
+        """
+        task = super().create_task(
+            task_args, job_interval, job_max_retries, burst=burst,
+            *args, **kwargs
+        )
+        task.storage_type = storage_type
+        task.save()
+
+        return task
+
+    def prepare_job_parameters(self):
+        """Generate the parameters for a new job.
+
+        This method will generate the parameters for a new job
+        based on the original parameters set for the task plus
+        the latest job parameters used. Depending on the status
+        of the task, new parameters will be generated.
+        """
+
+        task_args = {
+            'storage_type': self.storage_type,
+            'storage_url': self.task_args.get('storage_url'),
+            'storage_db_name': self.task_args.get('storage_db_name'),
+            'storage_verify_certs': self.task_args.get('storage_verify_certs'),
+            'redis_group': self.task_args.get('redis_group'),
+            'consumer_name': self.task_id,
+            'events_queue': settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+            'limit': self.task_args.get('limit', 5000)
+        }
+
+        return task_args
+
+    def can_be_retried(self):
+        return True
+
+    @property
+    def default_job_queue(self):
+        return settings.GRIMOIRELAB_Q_ARCHIVIST_JOBS
+
+    @staticmethod
+    def job_function(*args, **kwargs):
+        return archivist_job(*args, **kwargs)
+
+    @staticmethod
+    def on_success_callback(*args, **kwargs):
+        return _on_success_callback(*args, **kwargs)
+
+    @staticmethod
+    def on_failure_callback(*args, **kwargs):
+        return _on_failure_callback(*args, **kwargs)
+
+
 register_task_model(EventizerTask.TASK_TYPE, EventizerTask)
+register_task_model(StorageTask.TASK_TYPE, StorageTask)

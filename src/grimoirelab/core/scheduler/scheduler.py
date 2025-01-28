@@ -100,7 +100,7 @@ def cancel_task(task_uuid: str) -> None:
 
     jobs = job_class.objects.filter(task=task).all()
     for job in jobs:
-        job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection())
+        job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection(task.default_job_queue))
         job_rq.delete()
 
     task.delete()
@@ -125,7 +125,7 @@ def maintain_tasks() -> None:
         job_db = task.jobs.order_by('scheduled_at').first()
 
         try:
-            rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+            rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection(task.default_job_queue))
             continue
         except rq.exceptions.NoSuchJobError:
             logger.debug(
