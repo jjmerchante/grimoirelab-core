@@ -11,25 +11,25 @@
         <v-row>
           <v-col>
             <v-card-title class="text-subtitle-2 pb-0 d-flex align-center">
-            {{ id }}
-            <v-chip :color="status.toLowerCase()" class="ml-3" density="compact" size="small">
-              {{ status }}
-            </v-chip>
-          </v-card-title>
-          <v-card-subtitle class="font-weight-medium">
-            <v-icon :aria-label="backend" role="img" aria-hidden="false" size="small">
-              {{ 'mdi-' + backend }}
-            </v-icon>
-            {{ category }}
-            <v-tooltip v-if="uri" :text="uri" location="bottom" open-delay="200">
-              <template #activator="{ props }">
-                <span v-bind="props"> from {{ uri }} </span>
-              </template>
-            </v-tooltip>
-          </v-card-subtitle>
+              {{ id }}
+              <v-chip :color="status.toLowerCase()" class="ml-3" density="compact" size="small">
+                {{ status }}
+              </v-chip>
+            </v-card-title>
+            <v-card-subtitle class="font-weight-medium">
+              <v-icon :aria-label="backend" role="img" aria-hidden="false" size="small">
+                {{ 'mdi-' + backend }}
+              </v-icon>
+              {{ category }}
+              <v-tooltip v-if="uri" :text="uri" location="bottom" open-delay="200">
+                <template #activator="{ props }">
+                  <span v-bind="props"> from {{ uri }} </span>
+                </template>
+              </v-tooltip>
+            </v-card-subtitle>
           </v-col>
           <v-col class="px-0 py-md-6">
-            <div class="d-flex flex-wrap justify-end ">
+            <div class="d-flex flex-wrap justify-end">
               <v-tooltip
                 v-for="job in jobs"
                 :key="job.uuid"
@@ -37,7 +37,7 @@
                 :eager="false"
                 location="bottom"
               >
-                <template v-slot:activator="{ props }">
+                <template #activator="{ props }">
                   <v-icon v-bind="props" :color="job.status"> mdi-square </v-icon>
                 </template>
               </v-tooltip>

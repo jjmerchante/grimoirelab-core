@@ -5,7 +5,14 @@
       <v-chip class="ml-2" density="comfortable">
         {{ count }}
       </v-chip>
-      <form-dialog @create="$emit('create', $event)" />
+      <v-btn
+        :to="{ name: 'newTask' }"
+        class="ml-auto"
+        color="secondary"
+        prepend-icon="mdi-plus"
+        text="Add"
+        variant="flat"
+      ></v-btn>
     </h1>
 
     <task-list-item
@@ -35,13 +42,12 @@
   </div>
 </template>
 <script>
-import FormDialog from './FormDialog.vue'
 import TaskListItem from './TaskListItem.vue'
 
 export default {
   name: 'TaskList',
-  components: { FormDialog, TaskListItem },
-  emits: ['create', 'delete', 'reschedule', 'update:page'],
+  components: { TaskListItem },
+  emits: ['delete', 'reschedule', 'update:page'],
   props: {
     tasks: {
       type: Array,
