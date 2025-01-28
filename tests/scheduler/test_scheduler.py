@@ -80,6 +80,65 @@ class SchedulerTestTask(Task):
         return on_failure(*args, **kwargs)
 
 
+class OnSuccessCallbackTestTask(Task):
+    """Class for testing on success callback calls"""
+
+    TASK_TYPE = 'callback_test_task'
+
+    def prepare_job_parameters(self):
+        return self.task_args
+
+    def can_be_retried(self):
+        return True
+
+    @property
+    def default_job_queue(self):
+        return 'testing'
+
+    @staticmethod
+    def job_function(*args, **kwargs):
+        def add_numbers(a, b):
+            return a + b
+        return add_numbers(*args, **kwargs)
+
+    @staticmethod
+    def on_success_callback(*args, **kwargs):
+        return _on_success_callback(*args, **kwargs)
+
+    @staticmethod
+    def on_failure_callback(*args, **kwargs):
+        return _on_failure_callback(*args, **kwargs)
+
+
+class OnFailureCallbackTestTask(Task):
+    """Class for testing on failure callback calls"""
+
+    TASK_TYPE = 'failure_test_task'
+
+    def prepare_job_parameters(self):
+        return self.task_args
+
+    def can_be_retried(self):
+        return True
+
+    @property
+    def default_job_queue(self):
+        return 'testing'
+
+    @staticmethod
+    def job_function(*args, **kwargs):
+        raise Exception("Error")
+
+    @staticmethod
+    def on_success_callback(*args, **kwargs):
+        return _on_success_callback(*args, **kwargs)
+
+    @staticmethod
+    def on_failure_callback(job, connection, t, value, traceback, *args, **kwargs):
+        job.progress = str(t)
+        return _on_failure_callback(job, connection, t, value, traceback, *args, **kwargs)
+
+
 class TestScheduleTask(GrimoireLabTestCase):
     """Unit tests for scheduling tasks"""
 
@@ -222,16 +281,25 @@ class TestMaintainTasks(GrimoireLabTestCase):
 
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
-        task_class, job_class = register_task_model('test_task', SchedulerTestTask)
+        task_class_sched, job_class_sched = register_task_model(
+            'test_task', SchedulerTestTask
+        )
+        task_class_callback, job_class_callback = register_task_model(
+            'callback_test_task', OnSuccessCallbackTestTask
+        )
 
         def cleanup_test_model():
             with django.db.connection.schema_editor() as schema_editor:
-                schema_editor.delete_model(job_class)
-                schema_editor.delete_model(task_class)
+                schema_editor.delete_model(job_class_sched)
+                schema_editor.delete_model(task_class_sched)
+                schema_editor.delete_model(job_class_callback)
+                schema_editor.delete_model(task_class_callback)
 
         with django.db.connection.schema_editor() as schema_editor:
-            schema_editor.create_model(task_class)
-            schema_editor.create_model(job_class)
+            schema_editor.create_model(task_class_sched)
+            schema_editor.create_model(job_class_sched)
+            schema_editor.create_model(task_class_callback)
+            schema_editor.create_model(job_class_callback)
 
         self.addCleanup(cleanup_test_model)
         super().setUp()
@@ -259,7 +327,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
 
         # Check if jobs were re-scheduled
 
-        # Task1 was't re-scheduled
+        # Task1 wasn't re-scheduled
         job_db = task1.jobs.first()
         self.assertLessEqual(job_db.last_modified, before_dt)
         self.assertLessEqual(job_db.last_modified, after_dt)
@@ -271,6 +339,45 @@ class TestMaintainTasks(GrimoireLabTestCase):
 
         job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
         self.assertEqual(job_rq.id, job_db.uuid)
+
+    def test_maintain_tasks_reschedule_multiple_jobs(self):
+        """Tasks with multiple finished jobs are re-scheduled"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+
+        task = schedule_task('callback_test_task', task_args, job_interval=0)
+        worker = django_rq.workers.get_worker(task.default_job_queue)
+        worker.work(burst=True, with_scheduler=True)
+        worker.work(burst=True, with_scheduler=True)
+        worker.work(burst=True, with_scheduler=True)
+
+        # Three jobs were processed and one is still pending
+        self.assertEqual(task.jobs.count(), 4)
+
+        # Delete the last jobs manually to create the inconsistent state
+        job_db = task.jobs.last()
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+        # Run the maintenance tasks
+        before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        maintain_tasks()
+        after_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        # Task was re-scheduler
+        job_db = task.jobs.last()
+        self.assertGreaterEqual(job_db.last_modified, before_dt)
+        self.assertLessEqual(job_db.last_modified, after_dt)
+
+        # New job was created
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        self.assertEqual(job_rq.id, job_db.uuid)
+
+        worker.work(burst=True, with_scheduler=True)
+        self.assertEqual(task.jobs.count(), 5)
 
     def test_maintain_tasks_reschedule_expired_scheduled_at(self):
         """Tasks with inconsistent state with expired scheduled time are re-scheduled with current time"""
@@ -327,36 +434,6 @@ class TestMaintainTasks(GrimoireLabTestCase):
 
         job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
         self.assertEqual(job_rq.id, job_db.uuid)
-
-
-class OnSuccessCallbackTestTask(Task):
-    """Class for testing on success callback calls"""
-
-    TASK_TYPE = 'callback_test_task'
-
-    def prepare_job_parameters(self):
-        return self.task_args
-
-    def can_be_retried(self):
-        return True
-
-    @property
-    def default_job_queue(self):
-        return 'testing'
-
-    @staticmethod
-    def job_function(*args, **kwargs):
-        def add_numbers(a, b):
-            return a + b
-        return add_numbers(*args, **kwargs)
-
-    @staticmethod
-    def on_success_callback(*args, **kwargs):
-        return _on_success_callback(*args, **kwargs)
-
-    @staticmethod
-    def on_failure_callback(*args, **kwargs):
-        return _on_failure_callback(*args, **kwargs)
 
 
 class TestCancelTask(GrimoireLabTestCase):
@@ -544,35 +621,6 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
 
         # New job was created
         self.assertEqual(self.job_class.objects.count(), 2)
-
-
-class OnFailureCallbackTestTask(Task):
-    """Class for testing on failure callback calls"""
-
-    TASK_TYPE = 'failure_test_task'
-
-    def prepare_job_parameters(self):
-        return self.task_args
-
-    def can_be_retried(self):
-        return True
-
-    @property
-    def default_job_queue(self):
-        return 'testing'
-
-    @staticmethod
-    def job_function(*args, **kwargs):
-        raise Exception("Error")
-
-    @staticmethod
-    def on_success_callback(*args, **kwargs):
-        return _on_success_callback(*args, **kwargs)
-
-    @staticmethod
-    def on_failure_callback(job, connection, t, value, traceback, *args, **kwargs):
-        job.progress = str(t)
-        return _on_failure_callback(job, connection, t, value, traceback, *args, **kwargs)
 
 
 class OnFailureNoRetryTestTask(Task):

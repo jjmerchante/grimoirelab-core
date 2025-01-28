@@ -122,7 +122,7 @@ def maintain_tasks() -> None:
     )
 
     for task in tasks:
-        job_db = task.jobs.order_by('scheduled_at').first()
+        job_db = task.jobs.order_by('-scheduled_at').first()
 
         try:
             rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection(task.default_job_queue))
