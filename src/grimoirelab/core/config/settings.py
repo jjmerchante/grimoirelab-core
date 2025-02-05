@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'grimoirelab.core.scheduler',
     'grimoirelab.core.scheduler.tasks',
+    'grimoirelab.core.datasources',
 ]
 
 MIDDLEWARE = [
