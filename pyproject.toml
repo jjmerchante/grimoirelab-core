@@ -23,9 +23,15 @@ packages = [
 
 include = [
     { path = "grimoirelab/core/templates" },
+    { path = "ui", format = "sdist" },
     { path = "AUTHORS", format = "sdist" },
     { path = "NEWS", format = "sdist" },
     { path = "README.md", format = "sdist" },
+]
+
+exclude = [
+    "ui/tests",
+    "ui/.storybook",
 ]
 
 classifiers = [
@@ -60,6 +66,9 @@ opensearch-py = "^2.8.0"
 fakeredis = "^2.0.0"
 httpretty = "^1.1.4"
 flake8 = ">=7.0"
+
+[tool.poetry.build]
+script = "scripts/build-ui.py"
 
 [build-system]
 requires = ["poetry-core"]
