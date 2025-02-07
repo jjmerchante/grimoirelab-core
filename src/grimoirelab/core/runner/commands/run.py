@@ -60,8 +60,6 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
     """
-    create_background_tasks(clear_tasks)
-
     env = os.environ
 
     env["UWSGI_ENV"] = f"DJANGO_SETTINGS_MODULE={ctx.obj['cfg']}"
@@ -91,6 +89,8 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
 
     _ = django.core.wsgi.get_wsgi_application()
     maintain_tasks()
+
+    create_background_tasks(clear_tasks)
 
     # Run the server
     os.execvp("uwsgi", ("uwsgi",))
@@ -151,6 +151,7 @@ def create_background_tasks(clear_tasks: bool):
     """
     from grimoirelab.core.scheduler.scheduler import schedule_task
     from grimoirelab.core.scheduler.tasks.models import StorageTask
+    from grimoirelab.core.scheduler.models import SchedulerStatus
 
     workers = settings.GRIMOIRELAB_ARCHIVIST['WORKERS']
     storage_url = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL']
@@ -163,7 +164,7 @@ def create_background_tasks(clear_tasks: bool):
         StorageTask.objects.all().delete()
         click.echo("Removing old background tasks.")
 
-    current = StorageTask.objects.filter(burst=False).count()
+    current = StorageTask.objects.filter(burst=False).exclude(status=SchedulerStatus.FAILED).count()
     if workers == current:
         click.echo("Background tasks already created. Skipping.")
         return

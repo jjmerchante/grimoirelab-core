@@ -49,6 +49,13 @@ if typing.TYPE_CHECKING:
     from typing import Any
 
 
+RQ_JOB_STOPPED_STATUS = [
+    rq.job.JobStatus.FINISHED,
+    rq.job.JobStatus.FAILED,
+    rq.job.JobStatus.STOPPED,
+    rq.job.JobStatus.CANCELED
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,18 +131,32 @@ def maintain_tasks() -> None:
     for task in tasks:
         job_db = task.jobs.order_by('-scheduled_at').first()
 
-        try:
-            rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection(task.default_job_queue))
+        if not _is_job_removed_or_stopped(job_db, task.default_job_queue):
             continue
-        except rq.exceptions.NoSuchJobError:
-            logger.debug(
-                f"Job #{job_db.job_id} in queue (task: {task.task_id}) missing. Rescheduling."
-            )
+
+        logger.debug(
+            f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling."
+        )
 
         current_time = datetime_utcnow()
-        scheduled_at = task.scheduled_at if task.scheduled_at > current_time else current_time
+        scheduled_at = max(task.scheduled_at, current_time)
 
         _schedule_job(task, job_db, scheduled_at, job_db.job_args)
+
+
+def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
+    """
+    Check if the job was removed or stopped.
+
+    :param job: job to check.
+    :param queue: queue where the job is enqueued.
+    """
+    try:
+        connection = django_rq.get_connection(queue)
+        job_rq = rq.job.Job.fetch(job.uuid, connection=connection)
+        return job_rq.get_status() in RQ_JOB_STOPPED_STATUS
+    except rq.exceptions.NoSuchJobError:
+        return True
 
 
 def _enqueue_task(
