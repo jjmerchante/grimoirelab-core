@@ -16,20 +16,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import json
-
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from django.conf import settings
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 
 from .scheduler import (
     schedule_task
 )
 
 
-@require_http_methods(["POST"])
-@csrf_exempt
+@api_view(['POST'])
 def add_task(request):
     """Create a Task to fetch items
 
@@ -49,10 +45,7 @@ def add_task(request):
         }
     }
     """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    data = request.data
 
     task_type = data['type']
 
@@ -77,4 +70,4 @@ def add_task(request):
         'status': 'ok',
         'message': f"Task {task.id} added correctly"
     }
-    return JsonResponse(response, safe=False)
+    return Response(response, status=200)

@@ -80,6 +80,13 @@ CORS_ALLOW_CREDENTIALS = True
 
 SECRET_KEY = os.environ.get('GRIMOIRELAB_SECRET_KEY', 'fake-key')
 
+
+# Require authentication when using the API.
+# You shouldn't deactivate this option unless you are debugging
+# the system or running it in a trusted and safe environment.
+GRIMOIRELAB_AUTHENTICATION_REQUIRED = True
+
+
 #
 # Application definition - DO NOT MODIFY
 #
@@ -257,7 +264,14 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 100
+    'PAGE_SIZE': 100,
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'grimoirelab.core.permissions.IsAuthenticated',
+    ],
 }
 
 #

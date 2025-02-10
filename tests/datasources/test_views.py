@@ -20,6 +20,7 @@ import json
 
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -32,6 +33,8 @@ class TestAddRepository(TestCase):
 
     def setUp(self):
         self.client = Client()
+        self.user = get_user_model().objects.create_user(username='testuser', password='testpassword')
+        self.client.login(username='testuser', password='testpassword')
         self.url = reverse('add_repository')
         self.valid_data = {
             'uri': "https://example.com/repo.git",
@@ -80,7 +83,7 @@ class TestAddRepository(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"error": "Invalid JSON format."})
+        self.assertEqual(response.json(), {'detail': 'JSON parse error - Expecting value: line 1 column 1 (char 0)'})
 
     def test_add_repository_missing_parameters(self):
         """Test adding a repository with missing parameters"""
@@ -115,3 +118,17 @@ class TestAddRepository(TestCase):
 
         self.assertEqual(response.status_code, 405)
         self.assertEqual(response.json(), {"error": "Repository already exists"})
+
+    def test_add_repository_authentication_required(self):
+        """Test adding a repository without authentication"""
+
+        self.client.logout()
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps(self.valid_data),
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {"detail": "Authentication credentials were not provided."})

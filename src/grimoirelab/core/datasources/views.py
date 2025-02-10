@@ -15,21 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-
-import json
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 
 from django.conf import settings
 from django.db import IntegrityError
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 
 from .models import Repository
 from grimoirelab.core.scheduler.scheduler import schedule_task
 
 
-@require_http_methods(["POST"])
-@csrf_exempt
+@api_view(['POST'])
 def add_repository(request):
     """Create a Repository and start a Task to fetch items
 
@@ -44,10 +40,7 @@ def add_repository(request):
         }
     }
     """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    data = request.data
 
     # Get POST data
     job_interval = settings.GRIMOIRELAB_JOB_INTERVAL
@@ -60,7 +53,7 @@ def add_repository(request):
     datasource_type = data.get('datasource_type')
     datasource_category = data.get('datasource_category')
     if not uri or not datasource_type or not datasource_category:
-        return JsonResponse({"error": "Missing parameters"}, status=400)
+        return Response({"error": "Missing parameters"}, status=400)
 
     # Create the task and the repository
     try:
@@ -68,7 +61,7 @@ def add_repository(request):
                                                datasource_type=datasource_type,
                                                datasource_category=datasource_category)
     except IntegrityError:
-        return JsonResponse({"error": "Repository already exists"}, status=405)
+        return Response({"error": "Repository already exists"}, status=405)
 
     task_args = {
         'uri': data['uri']
@@ -88,4 +81,4 @@ def add_repository(request):
         'task_id': repository.task.uuid,
         'message': f"Repository {uri} added correctly"
     }
-    return JsonResponse(response, safe=False)
+    return Response(response)
