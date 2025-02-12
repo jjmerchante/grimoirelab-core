@@ -1,6 +1,10 @@
 <script setup>
 import { RouterView } from 'vue-router'
+import { useUserStore } from '@/store'
 import BreadCrumbs from './components/BreadCrumbs.vue'
+import UserDropdown from './components/UserDropdown.vue'
+
+const store = useUserStore()
 </script>
 
 <template>
@@ -9,8 +13,15 @@ import BreadCrumbs from './components/BreadCrumbs.vue'
       <template #prepend>
         <img src="./assets/favicon.png" height="30" />
       </template>
+      <v-spacer></v-spacer>
+      <user-dropdown v-if="store.isAuthenticated" :username="store.user" />
     </v-app-bar>
-    <v-navigation-drawer class="pa-2" color="transparent" permanent>
+    <v-navigation-drawer
+      v-if="store.isAuthenticated && $route.name !== 'signIn'"
+      class="pa-2"
+      color="transparent"
+      permanent
+    >
       <v-list color="primary" density="compact">
         <v-list-item :to="{ name: 'taskList' }">
           <template #prepend>
