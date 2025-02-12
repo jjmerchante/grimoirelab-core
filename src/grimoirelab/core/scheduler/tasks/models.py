@@ -232,6 +232,10 @@ class StorageTask(Task):
             'events_queue': settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
             'limit': self.task_args.get('limit', 5000)
         }
+        try:
+            task_args['block_timeout'] = self.task_args['block_timeout']
+        except KeyError:
+            pass
 
         return task_args
 

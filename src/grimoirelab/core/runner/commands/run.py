@@ -159,6 +159,7 @@ def create_background_tasks(clear_tasks: bool):
     storage_type = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_TYPE']
     verify_certs = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT']
     events_per_job = settings.GRIMOIRELAB_ARCHIVIST['EVENTS_PER_JOB']
+    block_timeout = settings.GRIMOIRELAB_ARCHIVIST['BLOCK_TIMEOUT']
 
     if clear_tasks:
         StorageTask.objects.all().delete()
@@ -174,7 +175,8 @@ def create_background_tasks(clear_tasks: bool):
         'storage_db_name': storage_db_name,
         'storage_verify_certs': verify_certs,
         'redis_group': 'archivist',
-        'limit': events_per_job
+        'limit': events_per_job,
+        'block_timeout': block_timeout
     }
     if workers > current:
         for _ in range(workers - current):
