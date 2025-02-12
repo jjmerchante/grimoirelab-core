@@ -26,15 +26,13 @@ import urllib3
 
 import redis
 import rq.job
+
+from django.conf import settings
 from opensearchpy import OpenSearch, RequestError
 
 
 if typing.TYPE_CHECKING:
     from typing import Any
-
-
-MAX_EVENTS_PER_JOB = 5000
-BLOCK_TIMEOUT = 60000  # seconds
 
 
 logger = logging.getLogger('archivist')
@@ -48,8 +46,8 @@ def archivist_job(
     redis_group: str,
     consumer_name: str,
     events_queue: str,
-    limit: int = MAX_EVENTS_PER_JOB,
-    block_timeout: int = BLOCK_TIMEOUT
+    limit: int = settings.GRIMOIRELAB_ARCHIVIST['EVENTS_PER_JOB'],
+    block_timeout: int = settings.GRIMOIRELAB_ARCHIVIST['BLOCK_TIMEOUT']
 ) -> ArchivistProgress:
     """Fetch and archive events.
 
@@ -64,7 +62,7 @@ def archivist_job(
     :param consumer_name: Name of the consumer
     :param events_queue: Redis stream where the events are fetched
     :param limit: Maximum number of events to fetch and store
-    :param block_timeout: Time to block when fetching events, None for not blocking,
+    :param block_timeout: Time (ms) to block when fetching events, None for not blocking,
         0 for blocking indefinitely.
     """
     rq_job = rq.get_current_job()
@@ -158,8 +156,8 @@ def events_consumer(
         consumer_name: str,
         stream_name: str,
         group_name: str,
-        limit: int = MAX_EVENTS_PER_JOB,
-        block_timeout: int = BLOCK_TIMEOUT,
+        limit: int,
+        block_timeout: int,
 ) -> iter(dict):
     """Get items from a Redis stream given a group and a consumer name
 
