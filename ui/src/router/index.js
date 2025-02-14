@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/store'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,6 +13,7 @@ const router = createRouter({
       path: '/datajobs',
       name: 'tasks',
       meta: {
+        requiresAuth: true,
         breadcrumb: {
           title: 'Tasks',
           to: { name: 'tasks' }
@@ -87,8 +89,36 @@ const router = createRouter({
           ]
         }
       ]
+    },
+    {
+      path: '/signin',
+      name: 'signIn',
+      component: () => import('../views/SignIn.vue')
     }
   ]
+})
+
+router.beforeEach((to, from, next) => {
+  const store = useUserStore()
+
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
+    if (!store.isAuthenticated) {
+      next({
+        name: 'signIn',
+        query: {
+          redirect: to.fullPath
+        }
+      })
+    } else {
+      next()
+    }
+  } else if (to.name === 'signIn' && store.isAuthenticated) {
+    next({
+      path: ''
+    })
+  } else {
+    next()
+  }
 })
 
 export default router
