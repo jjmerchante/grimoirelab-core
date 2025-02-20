@@ -40,7 +40,19 @@
       </order-selector>
     </div>
 
+    <div v-if="loading" class="d-flex justify-center pa-4">
+      <v-progress-circular class="mx-auto" color="primary" indeterminate />
+    </div>
+
+    <v-empty-state
+      v-else-if="!loading && count === 0"
+      icon="mdi-magnify"
+      title="No results found"
+      size="52"
+    ></v-empty-state>
+
     <task-list-item
+      v-else
       v-for="task in tasks"
       :key="task.uuid"
       :id="task.uuid"

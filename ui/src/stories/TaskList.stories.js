@@ -89,3 +89,20 @@ export const Default = {
     ]
   }
 }
+
+export const Loading = {
+  args: {
+    loading: true,
+    tasks: [],
+    count: 0,
+    pages: 1
+  }
+}
+
+export const NoData = {
+  args: {
+    tasks: [],
+    count: 0,
+    pages: 0
+  }
+}

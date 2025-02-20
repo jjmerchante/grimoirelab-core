@@ -3,6 +3,7 @@
     <task-list
       :tasks="tasks"
       :count="count"
+      :loading="isLoading"
       :pages="pages"
       @create="createTask($event)"
       @delete="confirmDeleteTask($event)"
@@ -27,6 +28,7 @@
 </template>
 <script>
 import { API } from '@/services/api'
+import { useIsLoading } from '@/composables/loading'
 import TaskList from '@/components/TaskList/TaskList.vue'
 
 export default {
@@ -128,6 +130,10 @@ export default {
         })
       }
     }
+  },
+  setup() {
+    const { isLoading } = useIsLoading()
+    return { isLoading }
   }
 }
 </script>
