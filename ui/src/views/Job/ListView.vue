@@ -1,16 +1,18 @@
 <template>
   <job-list
-    v-if="jobs.length > 0"
     :jobs="jobs"
     :count="count"
+    :loading="isLoading"
     :pages="pages"
     class="mt-4"
-    @update:page="fetchTaskJobs(this.taskId, $event)"
+    @update:filters="fetchTaskJobs(this.taskId, $event)"
   />
 </template>
 <script>
 import { API } from '@/services/api'
+import { useIsLoading } from '@/composables/loading'
 import JobList from '@/components/JobList.vue'
+
 export default {
   components: { JobList },
   props: {
@@ -34,9 +36,12 @@ export default {
     }
   },
   methods: {
-    async fetchTaskJobs(id = this.taskId, page = 1) {
+    async fetchTaskJobs(id = this.taskId, filters = { page: 1 }) {
+      if (filters.status === 'all') {
+        delete filters.status
+      }
       try {
-        const response = await API.scheduler.getTaskJobs(id, { page })
+        const response = await API.scheduler.getTaskJobs(id, filters)
         if (response.data) {
           this.jobs = response.data.results
           this.count = response.data.count
@@ -50,6 +55,10 @@ export default {
   },
   mounted() {
     this.fetchTaskJobs(this.taskId)
+  },
+  setup() {
+    const { isLoading } = useIsLoading()
+    return { isLoading }
   }
 }
 </script>

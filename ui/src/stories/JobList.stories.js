@@ -38,3 +38,20 @@ export const Default = {
     ]
   }
 }
+
+export const Loading = {
+  args: {
+    loading: true,
+    jobs: [],
+    count: 0,
+    pages: 1
+  }
+}
+
+export const NoData = {
+  args: {
+    jobs: [],
+    count: 0,
+    pages: 1
+  }
+}
