@@ -8,6 +8,8 @@
       @delete="confirmDeleteTask($event)"
       @reschedule="rescheduleTask($event)"
       @update:page="fetchTasks($event)"
+      @update:status="fetchTasks(this.page, $event)"
+      @update:filters="fetchTasks(this.page, $event)"
     />
     <v-snackbar v-model="snackbar.open" :color="snackbar.color">
       {{ snackbar.text }}
@@ -92,9 +94,13 @@ export default {
       }
       this.dialog = false
     },
-    async fetchTasks(page = 1) {
+    async fetchTasks(page = 1, filters) {
       try {
-        const response = await API.scheduler.list({ page })
+        const params = { page }
+        if (filters) {
+          Object.assign(params, filters)
+        }
+        const response = await API.scheduler.list(params)
         if (response.data.results) {
           this.tasks = response.data.results
           this.count = response.data.count
