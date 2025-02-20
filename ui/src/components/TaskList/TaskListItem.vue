@@ -8,60 +8,46 @@
   >
     <v-row>
       <v-col md="6" sm="8">
-        <v-row>
-          <v-col>
-            <v-card-title class="text-subtitle-2 pb-0 d-flex align-center">
-              {{ id }}
-              <v-chip :color="status.toLowerCase()" class="ml-3" density="compact" size="small">
-                {{ status }}
-              </v-chip>
-            </v-card-title>
-            <v-card-subtitle class="font-weight-medium">
-              <v-icon :aria-label="backend" role="img" aria-hidden="false" size="small">
-                {{ 'mdi-' + backend }}
-              </v-icon>
-              {{ category }}
-              <v-tooltip v-if="uri" :text="uri" location="bottom" open-delay="200">
-                <template #activator="{ props }">
-                  <span v-bind="props"> from {{ uri }} </span>
-                </template>
-              </v-tooltip>
-            </v-card-subtitle>
-          </v-col>
-          <v-col class="px-0 py-md-6">
-            <div class="d-flex flex-wrap justify-end">
-              <v-tooltip
-                v-for="job in jobs"
-                :key="job.uuid"
-                :text="`#${job.job_num} ${job.status}`"
-                :eager="false"
-                location="bottom"
-              >
-                <template #activator="{ props }">
-                  <v-icon v-bind="props" :color="job.status"> mdi-square </v-icon>
-                </template>
-              </v-tooltip>
-            </div>
-          </v-col>
-        </v-row>
+        <v-card-title class="text-subtitle-2 d-flex align-center pt-4">
+          {{ id }}
+          <v-chip :color="status.toLowerCase()" class="ml-4" density="compact" size="small">
+            {{ status }}
+          </v-chip>
+        </v-card-title>
+        <v-card-subtitle class="font-weight-medium">
+          <v-icon :aria-label="backend" role="img" aria-hidden="false" size="small">
+            {{ 'mdi-' + backend }}
+          </v-icon>
+          {{ category }}
+        </v-card-subtitle>
       </v-col>
       <v-divider vertical></v-divider>
-      <v-col md="4" class="px-4 py-6">
-        <p class="pb-2 text-body-2">
-          <v-icon color="medium-emphasis" size="small" start> mdi-format-list-numbered </v-icon>
-          <span class="font-weight-medium">
-            {{ executions }}
+      <v-col md="4" class="px-4 py-7">
+        <div class="d-flex flex-wrap mb-3">
+          <v-tooltip
+            v-for="job in [...jobs].reverse()"
+            :key="job.uuid"
+            :text="`#${job.job_num} ${job.status}`"
+            :eager="false"
+            location="bottom"
+          >
+            <template #activator="{ props }">
+              <div v-bind="props" :class="`bg-${job.status}`" class="job-run mr-2" />
+            </template>
+          </v-tooltip>
+          <span v-if="executions > 9" class="caption border text-medium-emphasis px-1">
+            + {{ executions - 9 }}
           </span>
-          executions
-        </p>
-        <p class="text-body-2">
-          <v-icon color="medium-emphasis" size="small" start> mdi-calendar </v-icon>
-          Last run {{ executionDate }}
+        </div>
+        <p class="text-body-2 d-flex align-baseline" v-if="latestRun">
+          <status-icon :status="latestRun.status" size="x-small" start />
+          Last run {{ latestRun.date }}
         </p>
       </v-col>
-      <v-col class="mx-4 py-6 d-flex flex-column align-end">
+      <v-col class="pa-6 d-flex flex-column align-end">
         <v-btn
           icon="mdi-delete"
+          class="mb-1"
           color="danger"
           variant="text"
           size="small"
@@ -82,10 +68,11 @@
 <script>
 import { formatDate } from '@/utils/dates'
 import StatusCard from '@/components/StatusCard.vue'
+import StatusIcon from '../StatusIcon.vue'
 
 export default {
   name: 'TaskListItem',
-  components: { StatusCard },
+  components: { StatusCard, StatusIcon },
   emits: ['delete', 'reschedule'],
   props: {
     backend: {
@@ -137,6 +124,17 @@ export default {
       } else {
         return ''
       }
+    },
+    latestRun() {
+      if (this.lastExecution) {
+        const latestStatus = this.status === 'enqueued' ? this.jobs[1].status : this.status
+        return {
+          date: formatDate(this.lastExecution),
+          status: latestStatus
+        }
+      } else {
+        return null
+      }
     }
   }
 }
@@ -144,5 +142,20 @@ export default {
 <style lang="scss" scoped>
 .v-chip.v-chip--density-compact {
   height: calc(var(--v-chip-height) + -6px);
+}
+
+.job-run {
+  width: 0.5rem;
+  height: 1.2rem;
+  border-radius: 2px;
+}
+
+.caption {
+  margin: 0 2px;
+  border-radius: 2px;
+  height: 1.2rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.1rem;
 }
 </style>
