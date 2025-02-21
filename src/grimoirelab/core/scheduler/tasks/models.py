@@ -135,10 +135,13 @@ class EventizerTask(Task):
             job_args = args_gen.resuming_args(job.job_args['job_args'], progress)
         elif self.status == SchedulerStatus.RECOVERY:
             job = self.jobs.all().order_by('-job_num').first()
-            progress = ChroniclerProgress.from_dict(job.progress)
-            job_args = args_gen.recovery_args(job.job_args['job_args'], progress)
+            if job and job.progress:
+                progress = ChroniclerProgress.from_dict(job.progress)
+                job_args = args_gen.recovery_args(job.job_args['job_args'], progress)
+            else:
+                job_args = args_gen.initial_args(self.task_args)
         else:
-            job_args = self.task_args
+            job_args = args_gen.initial_args(self.task_args)
 
         task_args['job_args'] = job_args
 
