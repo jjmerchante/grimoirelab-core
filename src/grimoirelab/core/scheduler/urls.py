@@ -24,6 +24,8 @@ from . import views
 
 urlpatterns = [
     re_path(r'^add_task', views.add_task),
+    re_path(r'^reschedule_task', views.reschedule_task),
+    re_path(r'^remove_task', views.remove_task),
     path('tasks/', api.EventizerTaskList.as_view()),
     path('tasks/<str:uuid>/', api.EventizerTaskDetail.as_view()),
     path('tasks/<str:task_id>/jobs/', api.EventizerJobList.as_view()),

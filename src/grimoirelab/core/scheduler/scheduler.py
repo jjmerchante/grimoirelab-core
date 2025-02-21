@@ -29,6 +29,7 @@ import rq.job
 
 from django.conf import settings
 from rq.registry import StartedJobRegistry
+from rq.command import send_stop_job_command
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
@@ -104,14 +105,51 @@ def cancel_task(task_uuid: str) -> None:
     """
     task = find_task(task_uuid)
 
-    _, job_class = get_registered_task_model(task.TASK_TYPE)
-
-    jobs = job_class.objects.filter(task=task).all()
+    jobs = task.jobs.all()
     for job in jobs:
-        job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection(task.default_job_queue))
+        connection = django_rq.get_connection(task.default_job_queue)
+        try:
+            job_rq = rq.job.Job.fetch(job.uuid, connection=connection)
+        except rq.exceptions.NoSuchJobError:
+            continue
+        if job_rq.get_status() == rq.job.JobStatus.STARTED:
+            send_stop_job_command(connection, job_rq.id)
         job_rq.delete()
 
     task.delete()
+
+
+def reschedule_task(task_uuid: str) -> None:
+    """Reschedule a task
+
+    The task will be rescheduled to be executed as soon
+    as possible. If it is running, it will be cancelled and
+    rescheduled.
+
+    :param task_uuid: uuid of the task to be rescheduled.
+
+    :raises NotFoundError: when the task is not found.
+    """
+    task = find_task(task_uuid)
+
+    if task.status == SchedulerStatus.ENQUEUED:
+        # Cancel the enqueued job and force the execution
+        job = task.jobs.order_by('-scheduled_at').first()
+        try:
+            job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection(task.default_job_queue))
+            job_rq.delete()
+        except (rq.exceptions.NoSuchJobError, rq.exceptions.InvalidJobOperation):
+            pass
+        _schedule_job(task, job, datetime_utcnow(), job.job_args)
+
+    elif task.status == SchedulerStatus.RUNNING:
+        # Make sure it is running
+        job = task.jobs.order_by('-scheduled_at').first()
+        if _is_job_removed_or_stopped(job, task.default_job_queue):
+            _schedule_job(task, job, datetime_utcnow(), job.job_args)
+
+    else:
+        _enqueue_task(task)
 
 
 def maintain_tasks() -> None:
