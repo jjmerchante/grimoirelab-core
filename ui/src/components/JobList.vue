@@ -6,7 +6,35 @@
         {{ count }}
       </v-chip>
     </h2>
+
+    <v-tabs
+      v-model="tab"
+      :items="tabs"
+      align-tabs="left"
+      class="mb-4"
+      color="primary"
+      height="36"
+      slider-color="primary"
+      @update:model-value="$emit('update:filters', { status: $event, page: 1 })"
+    >
+      <template #tab="{ item }">
+        <v-tab :text="item.text" :value="item.value" class="text-none text-subtitle-2"></v-tab>
+      </template>
+    </v-tabs>
+
+    <div v-if="loading" class="d-flex justify-center pa-4">
+      <v-progress-circular class="mx-auto" color="primary" indeterminate />
+    </div>
+
+    <v-empty-state
+      v-else-if="!loading && count === 0"
+      icon="mdi-magnify"
+      title="No results found"
+      size="52"
+    ></v-empty-state>
+
     <status-card
+      v-else
       v-for="job in jobs"
       :key="job.uuid"
       :status="job.status"
@@ -47,7 +75,7 @@
       :length="pages"
       color="primary"
       density="comfortable"
-      @update:model-value="$emit('update:page', $event)"
+      @update:model-value="$emit('update:filters', { page: $event, status: tab })"
     />
   </div>
 </template>
@@ -58,7 +86,7 @@ import StatusCard from '@/components/StatusCard.vue'
 export default {
   name: 'JobList',
   components: { StatusCard },
-  emits: ['update:page'],
+  emits: ['update:filters'],
   props: {
     jobs: {
       type: Array,
@@ -71,21 +99,40 @@ export default {
     pages: {
       type: Number,
       required: true
+    },
+    loading: {
+      type: Boolean,
+      required: false,
+      default: false
     }
   },
   data() {
     return {
-      page: 1
+      page: 1,
+      tab: 'all',
+      tabs: [
+        { text: 'All', value: 'all' },
+        { text: 'Failed', value: 5 },
+        { text: 'Completed', value: 4 }
+      ]
     }
   },
   methods: {
     formatDate,
     getDuration
+  },
+  watch: {
+    tab() {
+      this.page = 1
+    }
   }
 }
 </script>
 <style lang="scss" scoped>
 .v-card .v-card-title {
   line-height: 1.7rem;
+}
+.v-tab.v-tab.v-btn {
+  min-width: 0;
 }
 </style>

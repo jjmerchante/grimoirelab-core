@@ -21,7 +21,7 @@
             size="small"
             start
           >
-            {{ statusIcon }}
+            <status-icon :status="status" size="x-small" />
           </v-icon>
           Last run {{ lastRunDate }}
         </v-card-subtitle>
@@ -42,6 +42,13 @@
             {{ formattedInterval }}
           </span>
         </p>
+        <p v-if="failures" class="pb-2 text-body-2">
+          <v-icon color="failed" size="small" start> mdi-alert-circle-outline </v-icon>
+          <span class="font-weight-medium">
+            {{ failures }}
+          </span>
+          failure{{ failures > 1 ? 's' : '' }}
+        </p>
       </v-col>
     </v-row>
   </status-card>
@@ -49,10 +56,11 @@
 <script>
 import { formatDate } from '@/utils/dates'
 import StatusCard from '@/components/StatusCard.vue'
+import StatusIcon from './StatusIcon.vue'
 
 export default {
   name: 'TaskCard',
-  components: { StatusCard },
+  components: { StatusCard, StatusIcon },
   props: {
     age: {
       type: [Number, String],
@@ -98,6 +106,11 @@ export default {
       type: String,
       required: false,
       default: null
+    },
+    failures: {
+      type: Number,
+      required: false,
+      default: null
     }
   },
   computed: {
@@ -109,18 +122,6 @@ export default {
           return 'week'
         default:
           return `${this.interval} seconds`
-      }
-    },
-    statusIcon() {
-      switch (this.status) {
-        case 'completed':
-          return 'mdi-check'
-        case 'failed':
-          return 'mdi-close'
-        case 'running':
-          return 'mdi-sync'
-        default:
-          return 'mdi-calendar'
       }
     },
     lastRunDate() {

@@ -14,8 +14,45 @@
         variant="flat"
       ></v-btn>
     </h1>
+    <div class="d-flex">
+      <v-tabs
+        v-model="tab"
+        :items="tabs"
+        align-tabs="left"
+        color="primary"
+        height="36"
+        slider-color="primary"
+        @update:model-value="emitFilters"
+      >
+        <template #tab="{ item }">
+          <v-tab :text="item.text" :value="item.value" class="text-none text-subtitle-2"></v-tab>
+        </template>
+      </v-tabs>
+      <order-selector
+        :options="[
+          { title: 'Last run', value: 'last_run' },
+          { title: 'Scheduled at', value: 'scheduled_at' }
+        ]"
+        default="last_run"
+        class="ml-auto"
+        @update:value="orderBy = $event"
+      >
+      </order-selector>
+    </div>
+
+    <div v-if="loading" class="d-flex justify-center pa-4">
+      <v-progress-circular class="mx-auto" color="primary" indeterminate />
+    </div>
+
+    <v-empty-state
+      v-else-if="!loading && count === 0"
+      icon="mdi-magnify"
+      title="No results found"
+      size="52"
+    ></v-empty-state>
 
     <task-list-item
+      v-else
       v-for="task in tasks"
       :key="task.uuid"
       :id="task.uuid"
@@ -42,12 +79,13 @@
   </div>
 </template>
 <script>
+import OrderSelector from '../OrderSelector.vue'
 import TaskListItem from './TaskListItem.vue'
 
 export default {
   name: 'TaskList',
-  components: { TaskListItem },
-  emits: ['delete', 'reschedule', 'update:page'],
+  components: { OrderSelector, TaskListItem },
+  emits: ['delete', 'reschedule', 'update:page', 'update:filters'],
   props: {
     tasks: {
       type: Array,
@@ -60,12 +98,43 @@ export default {
     pages: {
       type: Number,
       required: true
+    },
+    loading: {
+      type: Boolean,
+      required: false,
+      default: false
     }
   },
   data() {
     return {
       dialog: false,
-      page: 1
+      page: 1,
+      tab: 'all',
+      tabs: [
+        { text: 'All', value: 'all' },
+        { text: 'Running', value: 3 },
+        { text: 'Failed', value: 5 },
+        { text: 'Enqueued', value: 2 }
+      ],
+      orderBy: null
+    }
+  },
+  methods: {
+    emitFilters() {
+      let filters = {}
+      if (this.tab !== 'all') {
+        Object.assign(filters, { status: this.tab })
+      }
+      if (this.orderBy) {
+        Object.assign(filters, { ordering: this.orderBy })
+      }
+      this.$emit('update:filters', filters)
+    }
+  },
+  watch: {
+    orderBy() {
+      this.emitFilters()
+      this.page = 1
     }
   }
 }
@@ -77,5 +146,8 @@ export default {
   & + .v-selection-control-group {
     padding-inline-start: 0;
   }
+}
+.v-tab.v-tab.v-btn {
+  min-width: 0;
 }
 </style>

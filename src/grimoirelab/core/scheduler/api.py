@@ -18,7 +18,10 @@
 
 import django_rq
 
+from django.db.models import F
+
 from rest_framework import (
+    filters,
     generics,
     pagination,
     response,
@@ -137,9 +140,18 @@ class EventizerJobLogsSerializer(serializers.ModelSerializer):
 
 
 class EventizerTaskList(generics.ListAPIView):
-    queryset = EventizerTask.objects.all().order_by('-scheduled_at')
     serializer_class = EventizerTaskListSerializer
     pagination_class = EventizerPaginator
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['scheduled_at', 'last_run']
+    ordering = [F('last_run').desc(nulls_first=True)]
+
+    def get_queryset(self):
+        queryset = EventizerTask.objects.all()
+        status = self.request.query_params.get('status')
+        if status is not None:
+            queryset = queryset.filter(status=status)
+        return queryset
 
 
 class EventizerTaskDetail(generics.RetrieveAPIView):
@@ -155,7 +167,11 @@ class EventizerJobList(generics.ListAPIView):
 
     def get_queryset(self):
         task_id = self.kwargs['task_id']
-        return get_registered_task_model('eventizer')[1].objects.filter(task__uuid=task_id)
+        queryset = get_registered_task_model('eventizer')[1].objects.filter(task__uuid=task_id).order_by('-scheduled_at')
+        status = self.request.query_params.get('status')
+        if status is not None:
+            queryset = queryset.filter(status=status)
+        return queryset
 
 
 class EventizerJobDetail(generics.RetrieveAPIView):

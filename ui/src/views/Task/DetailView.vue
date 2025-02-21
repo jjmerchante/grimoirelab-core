@@ -9,6 +9,7 @@
       :category="task.datasource_category"
       :status="task.status"
       :executions="task.runs"
+      :failures="task.failures"
       :interval="task.job_interval"
       :last-execution="task.last_run"
       :max-retries="task.max_retries"
