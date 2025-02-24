@@ -28,6 +28,7 @@ import rq.exceptions
 import rq.job
 
 from django.conf import settings
+from rq.registry import StartedJobRegistry
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
@@ -154,7 +155,15 @@ def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
     try:
         connection = django_rq.get_connection(queue)
         job_rq = rq.job.Job.fetch(job.uuid, connection=connection)
-        return job_rq.get_status() in RQ_JOB_STOPPED_STATUS
+        status = job_rq.get_status()
+        if status == rq.job.JobStatus.STARTED:
+            # Sometimes, the worker may be forcibly stopped, leaving the job
+            # in the STARTED status. We need to check if the job has expired
+            # due to a missing heartbeat.
+            expiration_date = StartedJobRegistry(queue, connection).get_expiration_time(job_rq)
+            return expiration_date < datetime.datetime.now()
+        else:
+            return status in RQ_JOB_STOPPED_STATUS
     except rq.exceptions.NoSuchJobError:
         return True
 
@@ -228,6 +237,7 @@ def _schedule_job(
 
         job.status = SchedulerStatus.ENQUEUED
         task.status = SchedulerStatus.ENQUEUED
+        job.scheduled_at = scheduled_at
         task.scheduled_at = scheduled_at
     except Exception as e:
         logger.error(f"Error enqueuing job of task {task.task_id}. Not scheduled. Error: {e}")
