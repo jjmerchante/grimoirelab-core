@@ -21,7 +21,9 @@ from rest_framework.response import Response
 from django.conf import settings
 
 from .scheduler import (
-    schedule_task
+    cancel_task,
+    schedule_task,
+    reschedule_task as scheduler_reschedule_task
 )
 
 
@@ -69,5 +71,47 @@ def add_task(request):
     response = {
         'status': 'ok',
         'message': f"Task {task.id} added correctly"
+    }
+    return Response(response, status=200)
+
+
+@api_view(['POST'])
+def reschedule_task(request):
+    """Reschedule a Task
+
+    The body should contain the task id to reschedule:
+    {
+        'taskId': 'task_id'
+    }
+    """
+    data = request.data
+    task_id = data['taskId']
+
+    scheduler_reschedule_task(task_id)
+
+    response = {
+        'status': 'ok',
+        'message': f"Task {task_id} rescheduled correctly"
+    }
+    return Response(response, status=200)
+
+
+@api_view(['POST'])
+def remove_task(request):
+    """Remove a Task
+
+    The body should contain the task id to remove:
+    {
+        'taskId': 'task_id'
+    }
+    """
+    data = request.data
+    task_id = data['taskId']
+
+    cancel_task(task_id)
+
+    response = {
+        'status': 'ok',
+        'message': f"Task {task_id} removed correctly"
     }
     return Response(response, status=200)

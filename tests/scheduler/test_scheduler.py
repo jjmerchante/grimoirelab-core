@@ -36,6 +36,7 @@ from grimoirelab.core.scheduler.scheduler import (
     schedule_task,
     cancel_task,
     maintain_tasks,
+    reschedule_task,
     _enqueue_task,
     _on_success_callback,
     _on_failure_callback
@@ -509,6 +510,156 @@ class TestCancelTask(GrimoireLabTestCase):
 
         with self.assertRaises(NotFoundError):
             cancel_task('non-existent-task-uuid')
+
+
+class TestRescheduleTask(GrimoireLabTestCase):
+    def setUp(self):
+        GRIMOIRELAB_TASK_MODELS.clear()
+        task_class, job_class = register_task_model('test_task', SchedulerTestTask)
+
+        def cleanup_test_model():
+            with django.db.connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(job_class)
+                schema_editor.delete_model(task_class)
+
+        with django.db.connection.schema_editor() as schema_editor:
+            schema_editor.create_model(task_class)
+            schema_editor.create_model(job_class)
+
+        self.addCleanup(cleanup_test_model)
+        super().setUp()
+
+    def test_reschedule_task_completed(self):
+        """Test a task is rescheduled correctly"""
+
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+
+        # Enqueue the task
+        enqueued_at = grimoirelab_toolkit.datetime.datetime_utcnow()
+        task = schedule_task('test_task', task_args)
+
+        # Check if a new job is created and the task is enqueued
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+        self.assertGreaterEqual(task.scheduled_at, enqueued_at)
+
+        # Run the job
+        before_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        worker = django_rq.workers.get_worker('testing')
+        processed = worker.work(burst=True, with_scheduler=True)
+        after_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        self.assertEqual(processed, True)
+
+        # Check task and task state after execution
+        task.refresh_from_db()
+        self.assertEqual(task.status, SchedulerStatus.COMPLETED)
+        self.assertEqual(task.runs, 1)
+        self.assertEqual(task.failures, 0)
+        self.assertGreater(task.last_run, before_run_call_dt)
+        self.assertLess(task.last_run, after_run_call_dt)
+
+        # Reschedule the completed task
+        enqueued_at = grimoirelab_toolkit.datetime.datetime_utcnow()
+        reschedule_task(task.uuid)
+
+        # Check if the task is rescheduled
+        task.refresh_from_db()
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+        self.assertGreater(task.scheduled_at, enqueued_at)
+
+        # Run the job
+        before_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+        worker = django_rq.workers.get_worker('testing')
+        processed = worker.work(burst=True, with_scheduler=True)
+        after_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        self.assertEqual(processed, True)
+
+        # Check task and task state after execution
+        task.refresh_from_db()
+        self.assertEqual(task.status, SchedulerStatus.COMPLETED)
+        self.assertEqual(task.runs, 2)
+        self.assertEqual(task.failures, 0)
+        self.assertGreater(task.last_run, before_run_call_dt)
+        self.assertLess(task.last_run, after_run_call_dt)
+
+    def test_reschedule_task_enqueued(self):
+        """Test if rescheduling a task enqueued change the scheduled time"""
+
+        # Enqueue the task
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+        first_schedule_time = datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)
+
+        task = SchedulerTestTask.create_task(task_args, 360, 10)
+        job_db = _enqueue_task(task, scheduled_at=first_schedule_time)
+
+        # Check initial state of the task
+        self.assertEqual(task.task_id, f'grimoire:task:{task.uuid}')
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+        self.assertEqual(task.scheduled_at, first_schedule_time)
+
+        # Reschedule the task
+        reschedule_task(task.uuid)
+        second_schedule_time = grimoirelab_toolkit.datetime.datetime_utcnow()
+
+        # Check if the task is rescheduled
+        task.refresh_from_db()
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+        self.assertLess(task.scheduled_at, second_schedule_time)
+
+    def test_reschedule_inconsistent_task(self):
+        """Test if reschedules a task with an inconsistent state"""
+
+        # Enqueue the task
+        task_args = {
+            'a': 1,
+            'b': 2,
+        }
+
+        task = SchedulerTestTask.create_task(task_args, 360, 10)
+        job_db = _enqueue_task(task)
+
+        # Check initial state of the task
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+
+        # Delete job manually to create the inconsistent state
+        job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+        job_rq.delete()
+
+        # Make sure the job was deleted
+        with self.assertRaises(rq.exceptions.NoSuchJobError):
+            rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
+
+        # Reschedule the task
+        scheduled_date = grimoirelab_toolkit.datetime.datetime_utcnow()
+        reschedule_task(task.uuid)
+
+        # Check if the task is rescheduled
+        task.refresh_from_db()
+        job_db = task.jobs.order_by('-scheduled_at').first()
+
+        self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
+        self.assertEqual(job_db.status, SchedulerStatus.ENQUEUED)
+        self.assertGreater(task.scheduled_at, scheduled_date)
+
+        # Run the job
+        worker = django_rq.workers.get_worker('testing')
+        processed = worker.work(burst=True, with_scheduler=True)
+
+        self.assertEqual(processed, True)
+
+        # Check task and task state after execution
+        task.refresh_from_db()
+        self.assertEqual(task.status, SchedulerStatus.COMPLETED)
+        self.assertEqual(task.runs, 1)
+        self.assertEqual(task.failures, 0)
+        self.assertGreater(task.last_run, scheduled_date)
 
 
 class TestOnSuccessCallback(GrimoireLabTestCase):
