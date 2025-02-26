@@ -5,12 +5,13 @@
       :count="count"
       :loading="isLoading"
       :pages="pages"
+      :current-page="currentPage"
       @create="createTask($event)"
       @delete="confirmDeleteTask($event)"
       @reschedule="rescheduleTask($event)"
-      @update:page="fetchTasks($event)"
-      @update:status="fetchTasks(this.page, $event)"
-      @update:filters="fetchTasks(this.page, $event)"
+      @update:page="pollTasks($event, filters)"
+      @update:status="pollTasks(1, $event)"
+      @update:filters="pollTasks(1, $event)"
     />
     <v-snackbar v-model="snackbar.open" :color="snackbar.color">
       {{ snackbar.text }}
@@ -47,11 +48,17 @@ export default {
       dialog: {
         open: false,
         action: null
-      }
+      },
+      interval: 30000,
+      pollID: null,
+      filters: {}
     }
   },
   mounted() {
-    this.fetchTasks(1)
+    this.pollID = this.pollTasks(1)
+  },
+  unmounted() {
+    clearTimeout(this.pollID)
   },
   methods: {
     async createTask(formData) {
@@ -96,7 +103,7 @@ export default {
       }
       this.dialog = false
     },
-    async fetchTasks(page = 1, filters) {
+    async fetchTasks(page = 1, filters = this.filters) {
       try {
         const params = { page }
         if (filters) {
@@ -108,6 +115,7 @@ export default {
           this.count = response.data.count
           this.pages = response.data.total_pages
           this.currentPage = response.data.page
+          this.filters = filters
         }
       } catch (error) {
         console.log(error)
@@ -128,6 +136,20 @@ export default {
           color: 'error',
           text: error.response?.data?.message || error
         })
+      }
+    },
+    async pollTasks(page, filters) {
+      clearTimeout(this.pollID)
+      try {
+        await this.fetchTasks(page, filters)
+      } catch (error) {
+        Object.assign(this.snackbar, {
+          open: true,
+          color: 'error',
+          text: error
+        })
+      } finally {
+        this.pollID = setTimeout(() => (this.pollTasks(page, filters)), this.interval)
       }
     }
   },

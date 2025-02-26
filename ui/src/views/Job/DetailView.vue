@@ -63,6 +63,9 @@ export default {
   },
   mounted() {
     this.pollID = this.pollJob(this.$route.params.id, this.$route.params.jobid)
+  },
+  unmounted() {
+    clearTimeout(this.pollID)
   }
 }
 </script>

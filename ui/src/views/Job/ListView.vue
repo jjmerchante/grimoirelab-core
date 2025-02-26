@@ -5,7 +5,7 @@
     :loading="isLoading"
     :pages="pages"
     class="mt-4"
-    @update:filters="fetchTaskJobs(this.taskId, $event)"
+    @update:filters="pollJobs($event)"
   />
 </template>
 <script>
@@ -27,7 +27,9 @@ export default {
       jobs: [],
       pages: 1,
       currentPage: 1,
-      count: 0
+      count: 0,
+      pollID: null,
+      interval: 30000
     }
   },
   computed: {
@@ -51,10 +53,23 @@ export default {
       } catch (error) {
         console.log(error)
       }
+    },
+    async pollJobs(filters) {
+      clearTimeout(this.pollID)
+      try {
+        await this.fetchTaskJobs(this.taskId, filters)
+      } catch (error) {
+        console.log(error)
+      } finally {
+        this.pollID = setTimeout(() => (this.pollJobs(filters)), this.interval)
+      }
     }
   },
   mounted() {
-    this.fetchTaskJobs(this.taskId)
+    this.pollJobs()
+  },
+  unmounted() {
+    clearTimeout(this.pollID)
   },
   setup() {
     const { isLoading } = useIsLoading()
