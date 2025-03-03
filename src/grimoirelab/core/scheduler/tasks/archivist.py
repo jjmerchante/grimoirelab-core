@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 import logging
 import typing
+
+import requests
 import urllib3
 
 import redis
@@ -79,6 +81,7 @@ def archivist_job(
     storage = Storage(url=storage_url,
                       db_name=storage_db_name,
                       verify_certs=storage_verify_certs)
+    storage.initialize()
     events = events_consumer(rq_job.connection,
                              consumer_name,
                              events_queue,
@@ -277,6 +280,11 @@ class StorageBackend:
         self.db_name = db_name
         self.verify_certs = verify_certs
 
+    def initialize(self) -> None:
+        """Initialize the storage backend."""
+
+        pass
+
     def store(self, data: dict[str, Any]) -> int:
         """Store data in the storage backend.
 
@@ -290,6 +298,11 @@ class StorageBackend:
         """Close the connection to the storage backend."""
 
         pass
+
+    def ping(self) -> bool:
+        """Check if the storage backend is up and running."""
+
+        raise NotImplementedError
 
 
 def get_storage_backend(storage_type: str) -> typing.Type[StorageBackend]:
@@ -368,8 +381,12 @@ class OpenSearchStorage(StorageBackend):
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         self.client = OpenSearch([url], verify_certs=self.verify_certs)
-        self._create_index(db_name)
         self.max_items_bulk = 100
+
+    def initialize(self) -> None:
+        """Initialize the OpenSearch instance."""
+
+        self._create_index(self.db_name)
 
     def _create_index(self, index_name: str) -> None:
         """Create an index in the OpenSearch instance.
@@ -431,3 +448,14 @@ class OpenSearchStorage(StorageBackend):
             new_items += self._bulk(body=bulk_json, index=self.db_name)
 
         return new_items
+
+    def ping(self) -> bool:
+        """Check if the OpenSearch instance is up and running."""
+
+        try:
+            r = requests.get(self.url,
+                             verify=self.verify_certs)
+            r.raise_for_status()
+            return True
+        except (requests.exceptions.ConnectionError, requests.HTTPError):
+            return False

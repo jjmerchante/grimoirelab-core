@@ -19,16 +19,24 @@
 from __future__ import annotations
 
 import os
+import time
 import typing
 
 import click
 import django.core
 import django.core.wsgi
+import django_rq
+import redis.exceptions
 
 from django.conf import settings
+from django.db import connections, OperationalError
 
 if typing.TYPE_CHECKING:
     from click import Context
+
+
+DEFAULT_BACKOFF_MAX = 120
+DEFAULT_MAX_RETRIES = 10
 
 
 @click.group()
@@ -60,6 +68,8 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
     """
+    wait_for_services(wait_archivist_storage=False)
+
     env = os.environ
 
     env["UWSGI_ENV"] = f"DJANGO_SETTINGS_MODULE={ctx.obj['cfg']}"
@@ -114,6 +124,8 @@ def eventizers(workers: int):
     Workers get jobs from the GRIMOIRELAB_Q_EVENTIZER_JOBS queue defined
     in the configuration file.
     """
+    wait_for_services(wait_archivist_storage=False)
+
     django.core.management.call_command(
         'rqworker-pool', settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
         num_workers=workers
@@ -137,6 +149,8 @@ def archivists(workers: int):
     Workers get jobs from the GRIMOIRELAB_Q_ARCHIVIST_JOBS queue defined
     in the configuration file.
     """
+    wait_for_services()
+
     django.core.management.call_command(
         'rqworker-pool', settings.GRIMOIRELAB_Q_ARCHIVIST_JOBS,
         num_workers=workers
@@ -191,3 +205,80 @@ def create_background_tasks(clear_tasks: bool):
     elif workers < current:
         tasks = StorageTask.objects.all()[workers:]
         tasks.update(burst=True)
+
+
+def wait_for_services(
+        wait_database: bool = True,
+        wait_redis: bool = True,
+        wait_archivist_storage: bool = True
+):
+    """Wait for services to be available before starting"""
+
+    if wait_database:
+        wait_database_ready()
+
+    if wait_redis:
+        wait_redis_ready()
+
+    if wait_archivist_storage:
+        wait_archivist_storage_ready()
+
+
+def _sleep_backoff(attempt: int) -> None:
+    """Sleep with exponential backoff"""
+
+    backoff = min(DEFAULT_BACKOFF_MAX, 2 ** attempt)
+    time.sleep(backoff)
+
+
+def wait_database_ready():
+    """Wait for the database to be available before starting"""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            db_conn = connections['default']
+            if db_conn:
+                db_conn.cursor()
+                db_conn.close()
+                break
+        except OperationalError as e:
+            click.echo(f"[{attempt}/{DEFAULT_MAX_RETRIES}] Database connection not ready {e.__cause__}")
+            _sleep_backoff(attempt)
+    else:
+        click.echo("Failed to connect to the database")
+        exit(1)
+
+
+def wait_redis_ready():
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            redis_conn = django_rq.get_connection(settings.GRIMOIRELAB_Q_EVENTIZER_JOBS)
+            redis_conn.ping()
+            break
+        except redis.exceptions.ConnectionError as e:
+            click.echo(f"[{attempt}/{DEFAULT_MAX_RETRIES}] Redis connection not ready {e.__cause__}")
+            _sleep_backoff(attempt)
+    else:
+        click.echo("Failed to connect to Redis server")
+        exit(1)
+
+
+def wait_archivist_storage_ready():
+    """Wait for the storage to be available before starting"""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        from grimoirelab.core.scheduler.tasks.archivist import get_storage_backend
+        Storage = get_storage_backend(settings.GRIMOIRELAB_ARCHIVIST['STORAGE_TYPE'])
+        storage = Storage(url=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
+                          db_name=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX'],
+                          verify_certs=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'])
+
+        if storage.ping():
+            break
+        else:
+            click.echo(f"[{attempt}/{DEFAULT_MAX_RETRIES}] Storage connection not ready")
+            _sleep_backoff(attempt)
+    else:
+        click.echo("Failed to connect to archivist storage")
+        exit(1)
