@@ -16,7 +16,7 @@
       :scheduled-date="task.scheduled_at"
       class="mt-4"
     />
-    <router-view :task="task"></router-view>
+    <router-view :task="task" @update:task="fetchTask($route.params.id)"></router-view>
   </v-container>
 </template>
 <script>

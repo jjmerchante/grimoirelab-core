@@ -24,3 +24,17 @@ export const Default = {
     ]
   }
 }
+
+export const Loading = {
+  args: {
+    logs: [
+      {
+        created: 1712929398.9828506,
+        msg: "Fetching latest commits: 'https://github.com/chaoss/grimoirelab.git' git repository",
+        module: 'git',
+        level: 0
+      }
+    ],
+    loading: true
+  }
+}
