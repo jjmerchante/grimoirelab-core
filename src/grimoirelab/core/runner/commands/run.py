@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import typing
 
@@ -29,6 +30,9 @@ from django.conf import settings
 
 if typing.TYPE_CHECKING:
     from click import Context
+
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -60,11 +64,14 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
     """
+    logger.info("Starting GrimoireLab core server.")
+
     env = os.environ
 
     env["UWSGI_ENV"] = f"DJANGO_SETTINGS_MODULE={ctx.obj['cfg']}"
 
     if devel:
+        logger.info("Running in developer mode.")
         env["GRIMOIRELAB_DEBUG"] = "true"
         env["UWSGI_HTTP"] = env.get("GRIMOIRELAB_HTTP_DEV", "127.0.0.1:8000")
         env["UWSGI_STATIC_MAP"] = settings.STATIC_URL + "=" + settings.STATIC_ROOT
@@ -84,12 +91,20 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
     env["UWSGI_LAZY_APPS"] = "true"
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
+    # Send UWSGI logs to a custom file except those starting with '['
+    # Request logs from UWSGI are removed
+    # We only want to capture logs from the application
+    env["UWSGI_LOGGER"] = "uwsgilogs file:/tmp/uwsgi-logger.log"
+    env["UWSGI_REQ_LOGGER"] = "file:/dev/null"
+    env["UWSGI_LOG_ROUTE"] = r"uwsgilogs ^[^\[]"
+
     # Run maintenance tasks
     from grimoirelab.core.scheduler.scheduler import maintain_tasks
 
     _ = django.core.wsgi.get_wsgi_application()
     maintain_tasks()
 
+    logger.info("Creating background tasks.")
     create_background_tasks(clear_tasks)
 
     # Run the server
@@ -165,11 +180,11 @@ def create_background_tasks(clear_tasks: bool):
 
     if clear_tasks:
         StorageTask.objects.all().delete()
-        click.echo("Removing old background tasks.")
+        logger.info("Removed old background tasks.")
 
     current = StorageTask.objects.filter(burst=False).exclude(status=SchedulerStatus.FAILED).count()
     if workers == current:
-        click.echo("Background tasks already created. Skipping.")
+        logger.info("Background tasks already created. Skipping.")
         return
 
     task_args = {
@@ -191,7 +206,7 @@ def create_background_tasks(clear_tasks: bool):
                 job_interval=1,
                 job_max_retries=10
             )
-        click.echo(f"Created {workers} background tasks.")
+        logger.info(f"Created {workers} archivist tasks.")
     elif workers < current:
         tasks = StorageTask.objects.all()[workers:]
         tasks.update(burst=True)

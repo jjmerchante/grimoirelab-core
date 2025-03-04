@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import getpass
+import logging
 import os
 import sys
 import typing
@@ -33,6 +34,9 @@ from django.db import IntegrityError
 
 if typing.TYPE_CHECKING:
     from click import Context
+
+
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -63,7 +67,7 @@ def _setup():
     _setup_database()
     _install_static_files()
 
-    click.secho("\nGrimoirelab configuration completed", fg='bright_cyan')
+    logger.info("\nGrimoirelab configuration completed")
 
 
 def _create_database(database: str = 'default', db_name: str | None = None):
@@ -75,7 +79,7 @@ def _create_database(database: str = 'default', db_name: str | None = None):
     db_params = settings.DATABASES[database]
     db_name = db_name if db_name else db_params['NAME']
 
-    click.secho("## GrimoireLab database creation\n", fg='bright_cyan')
+    logger.info("## GrimoireLab database creation\n")
 
     try:
         cursor = MySQLdb.connect(
@@ -92,7 +96,7 @@ def _create_database(database: str = 'default', db_name: str | None = None):
         msg = f"Error creating database '{db_name}' for '{database}': {exc}."
         raise click.ClickException(msg)
 
-    click.echo(f"GrimoireLab database '{db_name}' for '{database}' created.\n")
+    logger.info(f"GrimoireLab database '{db_name}' for '{database}' created.\n")
 
 
 def _setup_database(database: str = 'default'):
@@ -102,8 +106,6 @@ def _setup_database(database: str = 'default'):
                 fg='bright_cyan')
 
     django.core.management.call_command('migrate', database=database)
-
-    click.echo()
 
 
 def _install_static_files():
@@ -116,8 +118,6 @@ def _install_static_files():
                                         ignore=['admin', 'rest_framework'],
                                         clear=True,
                                         interactive=False)
-
-    click.echo()
 
 
 @admin.command()
