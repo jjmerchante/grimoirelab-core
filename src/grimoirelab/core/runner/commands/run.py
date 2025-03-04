@@ -113,6 +113,10 @@ def server(ctx: Context, devel: bool, maintenance_interval: int):
     env["UWSGI_LAZY_APPS"] = "true"
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
+    # Request logs from UWSGI are removed
+    # We will use Django structlog instead
+    env["UWSGI_REQ_LOGGER"] = "file:/dev/null"
+
     # Run maintenance tasks in the background
     _maintenance_process(maintenance_interval)
 
@@ -139,7 +143,11 @@ def periodic_maintain_tasks(interval):
             logger.info("Maintenance task interrupted. Exiting...")
             return
 
-        time.sleep(interval)
+        try:
+            time.sleep(interval)
+        except KeyboardInterrupt:
+            logger.info("Maintenance task stopped.")
+            return
 
 
 def _maintenance_process(maintenance_interval):
