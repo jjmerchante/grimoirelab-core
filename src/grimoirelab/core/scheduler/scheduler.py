@@ -23,6 +23,7 @@ import logging
 import typing
 import uuid
 
+import django.db
 import django_rq
 import rq.exceptions
 import rq.job
@@ -301,6 +302,10 @@ def _on_success_callback(
     The new arguments for the job are obtained from the result
     of the job object.
     """
+    # After long-running tasks, the connection may be closed.
+    # Close unusable connections and let Django reopen them if needed.
+    django.db.close_old_connections()
+
     try:
         job_db = find_job(job.id)
     except NotFoundError:
@@ -342,6 +347,10 @@ def _on_failure_callback(
     The new arguments for the job are obtained from the result
     of the job object.
     """
+    # After long-running tasks, the connection may be closed.
+    # Close unusable connections and let Django reopen them if needed.
+    django.db.close_old_connections()
+
     try:
         job_db = find_job(job.id)
     except NotFoundError:
