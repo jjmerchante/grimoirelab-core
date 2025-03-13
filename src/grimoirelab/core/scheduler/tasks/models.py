@@ -231,6 +231,8 @@ class StorageTask(Task):
         task_args = {
             'storage_type': self.storage_type,
             'storage_url': self.task_args.get('storage_url'),
+            'storage_username': self.task_args.get('storage_username'),
+            'storage_password': self.task_args.get('storage_password'),
             'storage_db_name': self.task_args.get('storage_db_name'),
             'storage_verify_certs': self.task_args.get('storage_verify_certs'),
             'redis_group': self.task_args.get('redis_group'),
