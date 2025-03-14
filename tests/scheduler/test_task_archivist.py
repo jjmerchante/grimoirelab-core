@@ -88,6 +88,8 @@ class TestArchivistJob(GrimoireLabTestCase):
         job_args = {
             'storage_type': 'mock_storage',
             'storage_url': 'example.com',
+            'storage_username': 'user',
+            'storage_password': 'password',
             'storage_db_name': 'mock_db',
             'storage_verify_certs': True,
             'redis_group': 'archivist',
@@ -127,6 +129,8 @@ class TestArchivistJob(GrimoireLabTestCase):
         job_args = {
             'storage_type': 'mock_storage',
             'storage_url': 'example.com',
+            'storage_username': 'user',
+            'storage_password': 'password',
             'storage_db_name': 'mock_db',
             'storage_verify_certs': True,
             'redis_group': 'archivist',
@@ -167,6 +171,8 @@ class TestArchivistJob(GrimoireLabTestCase):
         job_args = {
             'storage_type': 'nobackend',
             'storage_url': 'example.com',
+            'storage_username': 'user',
+            'storage_password': 'password',
             'storage_db_name': 'mock_db',
             'storage_verify_certs': True,
             'redis_group': 'archivist',

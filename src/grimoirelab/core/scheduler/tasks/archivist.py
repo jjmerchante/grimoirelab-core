@@ -41,6 +41,8 @@ logger = logging.getLogger('archivist')
 def archivist_job(
     storage_type: str,
     storage_url: str,
+    storage_username: str,
+    storage_password: str,
     storage_db_name: str,
     storage_verify_certs: bool,
     redis_group: str,
@@ -56,6 +58,8 @@ def archivist_job(
 
     :param storage_type: type of the storage system (e.g., 'opensearch')
     :param storage_url: URL of the storage system
+    :param storage_username: Username to use when authentication is required
+    :param storage_password: Password to use when authentication is required
     :param storage_db_name: Name of the database to use
     :param storage_verify_certs: Verify certificates when connecting to the storage system
     :param redis_group: Redis group name to use for fetching events
@@ -77,6 +81,8 @@ def archivist_job(
 
     Storage = get_storage_backend(storage_type)
     storage = Storage(url=storage_url,
+                      user=storage_username,
+                      password=storage_password,
                       db_name=storage_db_name,
                       verify_certs=storage_verify_certs)
     events = events_consumer(rq_job.connection,
@@ -272,8 +278,17 @@ class StorageBackend:
 
     :param url: URL of the storage backend
     """
-    def __init__(self, url: str, db_name: str, verify_certs: bool = False) -> None:
+    def __init__(
+        self,
+        url: str,
+        db_name: str,
+        user: str | None = None,
+        password: str | None = None,
+        verify_certs: bool = False
+    ) -> None:
         self.url = url
+        self.user = user
+        self.password = password
         self.db_name = db_name
         self.verify_certs = verify_certs
 
@@ -361,13 +376,24 @@ class OpenSearchStorage(StorageBackend):
         }
     }
 
-    def __init__(self, url: str, db_name: str, verify_certs: bool = False) -> None:
-        super().__init__(url, db_name, verify_certs)
+    def __init__(
+            self,
+            url: str,
+            db_name: str,
+            user: str | None = None,
+            password: str | None = None,
+            verify_certs: bool = False
+    ) -> None:
+        super().__init__(url=url, db_name=db_name, user=user, password=password, verify_certs=verify_certs)
 
         if not verify_certs:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-        self.client = OpenSearch([url], verify_certs=self.verify_certs)
+        auth = None
+        if user and password:
+            auth = (user, password)
+
+        self.client = OpenSearch([url], http_auth=auth, verify_certs=self.verify_certs)
         self._create_index(db_name)
         self.max_items_bulk = 100
 

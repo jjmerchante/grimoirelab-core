@@ -155,6 +155,8 @@ def create_background_tasks(clear_tasks: bool):
 
     workers = settings.GRIMOIRELAB_ARCHIVIST['WORKERS']
     storage_url = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL']
+    storage_username = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME']
+    storage_password = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD']
     storage_db_name = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX']
     storage_type = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_TYPE']
     verify_certs = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT']
@@ -172,6 +174,8 @@ def create_background_tasks(clear_tasks: bool):
 
     task_args = {
         'storage_url': storage_url,
+        'storage_username': storage_username,
+        'storage_password': storage_password,
         'storage_db_name': storage_db_name,
         'storage_verify_certs': verify_certs,
         'redis_group': 'archivist',
