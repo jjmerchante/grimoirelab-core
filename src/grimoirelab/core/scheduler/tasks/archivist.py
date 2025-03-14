@@ -22,13 +22,15 @@ from __future__ import annotations
 import json
 import logging
 import typing
-import urllib3
 
+import certifi
 import redis
 import rq.job
+import urllib3
 
 from django.conf import settings
 from opensearchpy import OpenSearch, RequestError
+from urllib3.util import create_urllib3_context
 
 
 if typing.TYPE_CHECKING:
@@ -393,7 +395,19 @@ class OpenSearchStorage(StorageBackend):
         if user and password:
             auth = (user, password)
 
-        self.client = OpenSearch([url], http_auth=auth, verify_certs=self.verify_certs)
+        context = None
+        if self.verify_certs:
+            # Use certificates from the local system and certifi
+            context = create_urllib3_context()
+            context.load_default_certs()
+            context.load_verify_locations(certifi.where())
+
+        self.client = OpenSearch(
+            hosts=[url],
+            http_auth=auth,
+            verify_certs=self.verify_certs,
+            ssl_context=context,
+        )
         self._create_index(db_name)
         self.max_items_bulk = 100
 
