@@ -18,17 +18,26 @@
 
 from __future__ import annotations
 
+import logging
 import os
+import time
 import typing
 
 import click
 import django.core
 import django.core.wsgi
+import django_rq
+import redis
+import requests
 
 from django.conf import settings
 
 if typing.TYPE_CHECKING:
     from click import Context
+
+
+DEFAULT_BACKOFF_MAX = 60
+DEFAULT_MAX_RETRIES = 10
 
 
 @click.group()
@@ -43,13 +52,9 @@ def run(ctx: Context):
               is_flag=True,
               default=False,
               help="Run the service in developer mode.")
-@click.option("--clear-tasks",
-              is_flag=True,
-              default=False,
-              help="Clear background tasks.")
 @run.command()
 @click.pass_context
-def server(ctx: Context, devel: bool, clear_tasks: bool):
+def server(ctx: Context, devel: bool):
     """Start the GrimoireLab core server.
 
     GrimoireLab server allows to schedule tasks and fetch data from
@@ -90,8 +95,6 @@ def server(ctx: Context, devel: bool, clear_tasks: bool):
     _ = django.core.wsgi.get_wsgi_application()
     maintain_tasks()
 
-    create_background_tasks(clear_tasks)
-
     # Run the server
     os.execvp("uwsgi", ("uwsgi",))
 
@@ -120,78 +123,95 @@ def eventizers(workers: int):
     )
 
 
+def _sleep_backoff(attempt: int) -> None:
+    """Sleep with exponential backoff"""
+
+    backoff = min(DEFAULT_BACKOFF_MAX, 2 ** attempt)
+    time.sleep(backoff)
+
+
+def _wait_opensearch_ready(url, verify_certs) -> None:
+    """Wait for OpenSearch to be available before starting"""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            r = requests.get(url,
+                             verify=verify_certs)
+            r.raise_for_status()
+            break
+        except (requests.exceptions.ConnectionError, requests.HTTPError) as e:
+            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready")
+            _sleep_backoff(attempt)
+
+    else:
+        logging.error("Failed to connect to OpenSearch")
+        exit(1)
+
+    logging.info("OpenSearch is ready")
+
+
+def _wait_redis_ready():
+    """Wait for Redis to be available before starting"""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            redis_conn = django_rq.get_connection()
+            redis_conn.ping()
+            break
+        except redis.exceptions.ConnectionError as e:
+            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Redis connection not ready: {e}")
+            _sleep_backoff(attempt)
+    else:
+        logging.error("Failed to connect to Redis server")
+        exit(1)
+
+    logging.info("Redis is ready")
+
+
 @run.command()
 @click.option('--workers',
               default=20,
               show_default=True,
-              help="Number of workers to run in the pool.")
-def archivists(workers: int):
-    """Start a pool of archivists workers.
+              help="Number of archivists to run.")
+@click.option("--verbose",
+              is_flag=True,
+              default=False,
+              help="Enable verbose mode.")
+@click.option("--burst",
+              is_flag=True,
+              default=False,
+              help="Process all the events and exit.")
+def archivists(workers: int, verbose: bool, burst: bool):
+    """Start a pool of archivists.
 
-    The workers on the pool will run tasks to fetch events from redis.
+    The archivists will fetch events from a redis stream.
     Data will be stored in the defined data source.
 
-    The number of workers running in the pool can be defined with the
-    parameter '--workers'.
+    The number of archivists can be defined with the parameter '--workers'.
+    To enable verbose mode, use the '--verbose' flag.
 
-    Workers get jobs from the GRIMOIRELAB_Q_ARCHIVIST_JOBS queue defined
-    in the configuration file.
+    If the '--burst' flag is enabled, the pool will process all the events
+    and exit.
     """
-    django.core.management.call_command(
-        'rqworker-pool', settings.GRIMOIRELAB_Q_ARCHIVIST_JOBS,
-        num_workers=workers
+    from grimoirelab.core.consumers.archivist import OpenSearchArchivistPool
+
+    _wait_opensearch_ready(settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
+                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'])
+    _wait_redis_ready()
+
+    pool = OpenSearchArchivistPool(
+        # Consumer parameters
+        stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+        group_name="opensearch-archivist",
+        num_consumers=workers,
+        stream_block_timeout=settings.GRIMOIRELAB_ARCHIVIST['BLOCK_TIMEOUT'],
+        verbose=verbose,
+        # OpenSearch parameters
+        url=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
+        user=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME'],
+        password=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD'],
+        index=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX'],
+        bulk_size=settings.GRIMOIRELAB_ARCHIVIST['BULK_SIZE'],
+        verify_certs=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'],
     )
-
-
-def create_background_tasks(clear_tasks: bool):
-    """
-    Create background tasks before starting the server.
-    :param clear_tasks: clear tasks before creating new ones.
-    :return:
-    """
-    from grimoirelab.core.scheduler.scheduler import schedule_task
-    from grimoirelab.core.scheduler.tasks.models import StorageTask
-    from grimoirelab.core.scheduler.models import SchedulerStatus
-
-    workers = settings.GRIMOIRELAB_ARCHIVIST['WORKERS']
-    storage_url = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL']
-    storage_username = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME']
-    storage_password = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD']
-    storage_db_name = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX']
-    storage_type = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_TYPE']
-    verify_certs = settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT']
-    events_per_job = settings.GRIMOIRELAB_ARCHIVIST['EVENTS_PER_JOB']
-    block_timeout = settings.GRIMOIRELAB_ARCHIVIST['BLOCK_TIMEOUT']
-
-    if clear_tasks:
-        StorageTask.objects.all().delete()
-        click.echo("Removing old background tasks.")
-
-    current = StorageTask.objects.filter(burst=False).exclude(status=SchedulerStatus.FAILED).count()
-    if workers == current:
-        click.echo("Background tasks already created. Skipping.")
-        return
-
-    task_args = {
-        'storage_url': storage_url,
-        'storage_username': storage_username,
-        'storage_password': storage_password,
-        'storage_db_name': storage_db_name,
-        'storage_verify_certs': verify_certs,
-        'redis_group': 'archivist',
-        'limit': events_per_job,
-        'block_timeout': block_timeout
-    }
-    if workers > current:
-        for _ in range(workers - current):
-            schedule_task(
-                task_type=StorageTask.TASK_TYPE,
-                storage_type=storage_type,
-                task_args=task_args,
-                job_interval=1,
-                job_max_retries=10
-            )
-        click.echo(f"Created {workers} background tasks.")
-    elif workers < current:
-        tasks = StorageTask.objects.all()[workers:]
-        tasks.update(burst=True)
+    pool.start(burst=burst)

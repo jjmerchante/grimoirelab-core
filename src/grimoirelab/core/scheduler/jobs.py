@@ -46,7 +46,7 @@ class GrimoireLabJob(rq.job.Job):
     """
 
     # Default packages to log
-    PACKAGES_TO_LOG = [__name__, 'chronicler', 'archivist', 'perceval', 'rq']
+    PACKAGES_TO_LOG = [__name__, 'chronicler', 'perceval', 'rq']
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
