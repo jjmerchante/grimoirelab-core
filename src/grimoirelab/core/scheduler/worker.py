@@ -24,6 +24,8 @@ import typing
 import django.db.transaction
 import rq.worker
 
+from grimoirelab_toolkit.datetime import datetime_utcnow
+
 from .db import find_job
 from .models import SchedulerStatus
 
@@ -48,7 +50,14 @@ class GrimoireLabWorker(rq.worker.Worker):
         job_db = find_job(job.id)
 
         with django.db.transaction.atomic():
+            job_db.started_at = datetime_utcnow()
             job_db.status = SchedulerStatus.RUNNING
             job_db.save()
             job_db.task.status = SchedulerStatus.RUNNING
             job_db.task.save()
+
+
+class GrimoireLabSimpleWorker(GrimoireLabWorker, rq.worker.SimpleWorker):
+    """Worker to run GrimoireLab jobs in the same process, specially for testing"""
+
+    pass

@@ -261,6 +261,8 @@ class TestScheduleTask(GrimoireLabTestCase):
         self.assertEqual(job.progress, 3)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
     @unittest.mock.patch('django_rq.get_queue')
     def test_error_enqueuing_task(self, mock_get_queue):
@@ -706,6 +708,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         self.assertEqual(job.status, SchedulerStatus.COMPLETED)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
         # The callback was called and the task was scheduled again
         task.refresh_from_db()
@@ -856,6 +860,8 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         self.assertEqual(job.progress, "<class 'Exception'>")
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
         # A new job was created
         self.assertEqual(self.job_class.objects.count(), 2)
