@@ -147,8 +147,8 @@ def reschedule_task(task_uuid: str) -> None:
         # Make sure it is running
         job = task.jobs.order_by('-scheduled_at').first()
         if _is_job_removed_or_stopped(job, task.default_job_queue):
-            _schedule_job(task, job, datetime_utcnow(), job.job_args)
-
+            job.save_run(SchedulerStatus.FAILED)
+            _enqueue_task(task)
     else:
         _enqueue_task(task)
 
@@ -181,7 +181,8 @@ def maintain_tasks() -> None:
         current_time = datetime_utcnow()
         scheduled_at = max(task.scheduled_at, current_time)
 
-        _schedule_job(task, job_db, scheduled_at, job_db.job_args)
+        job_db.save_run(SchedulerStatus.FAILED)
+        _enqueue_task(task, scheduled_at=scheduled_at)
 
 
 def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
