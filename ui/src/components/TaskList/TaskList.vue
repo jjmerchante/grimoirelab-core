@@ -103,12 +103,17 @@ export default {
       type: Boolean,
       required: false,
       default: false
+    },
+    currentPage: {
+      type: Number,
+      required: false,
+      default: 1
     }
   },
   data() {
     return {
       dialog: false,
-      page: 1,
+      page: this.currentPage,
       tab: 'all',
       tabs: [
         { text: 'All', value: 'all' },
@@ -135,6 +140,9 @@ export default {
     orderBy() {
       this.emitFilters()
       this.page = 1
+    },
+    currentPage(value) {
+      this.page = value
     }
   }
 }
