@@ -247,6 +247,7 @@ class Job(BaseModel):
     queue = CharField(max_length=MAX_SIZE_CHAR_FIELD,
                       null=True, default=None)
     scheduled_at = DateTimeField(null=True, default=None)
+    started_at = DateTimeField(null=True, default=None)
     finished_at = DateTimeField(null=True, default=None)
 
     class Meta:

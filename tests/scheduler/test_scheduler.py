@@ -261,6 +261,8 @@ class TestScheduleTask(GrimoireLabTestCase):
         self.assertEqual(job.progress, 3)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
     @unittest.mock.patch('django_rq.get_queue')
     def test_error_enqueuing_task(self, mock_get_queue):
@@ -333,10 +335,16 @@ class TestMaintainTasks(GrimoireLabTestCase):
         self.assertLessEqual(job_db.last_modified, before_dt)
         self.assertLessEqual(job_db.last_modified, after_dt)
 
-        # Task2 was re-scheduler
+        # Task2 was re-scheduled
         job_db = task2.jobs.first()
         self.assertGreaterEqual(job_db.last_modified, before_dt)
         self.assertLessEqual(job_db.last_modified, after_dt)
+        self.assertEqual(job_db.status, SchedulerStatus.FAILED)
+
+        # Task2 has a new job
+        self.assertEqual(task2.jobs.count(), 2)
+        job_db = task2.jobs.last()
+        self.assertEqual(job_db.status, SchedulerStatus.ENQUEUED)
 
         job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
         self.assertEqual(job_rq.id, job_db.uuid)
@@ -378,7 +386,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
         self.assertEqual(job_rq.id, job_db.uuid)
 
         worker.work(burst=True, with_scheduler=True)
-        self.assertEqual(task.jobs.count(), 5)
+        self.assertEqual(task.jobs.count(), 6)
 
     def test_maintain_tasks_reschedule_expired_scheduled_at(self):
         """Tasks with inconsistent state with expired scheduled time are re-scheduled with current time"""
@@ -403,7 +411,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
         after_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
 
         # Check if jobs were re-scheduled with a different time
-        job_db = task.jobs.first()
+        job_db = task.jobs.last()
         self.assertLessEqual(task.scheduled_at, before_dt)
         self.assertLessEqual(task.scheduled_at, after_dt)
 
@@ -430,7 +438,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
         maintain_tasks()
 
         # Check if jobs were re-scheduled with a different time
-        job_db = task.jobs.first()
+        job_db = task.jobs.last()
         self.assertLessEqual(task.scheduled_at, schedule_time)
 
         job_rq = rq.job.Job.fetch(job_db.uuid, connection=django_rq.get_connection())
@@ -706,6 +714,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         self.assertEqual(job.status, SchedulerStatus.COMPLETED)
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
         # The callback was called and the task was scheduled again
         task.refresh_from_db()
@@ -856,6 +866,8 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         self.assertEqual(job.progress, "<class 'Exception'>")
         self.assertGreater(job.finished_at, before_run_call_dt)
         self.assertLess(job.finished_at, after_run_call_dt)
+        self.assertGreater(job.started_at, before_run_call_dt)
+        self.assertLess(job.started_at, job.finished_at)
 
         # A new job was created
         self.assertEqual(self.job_class.objects.count(), 2)
