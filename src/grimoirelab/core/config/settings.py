@@ -341,3 +341,13 @@ GRIMOIRELAB_ARCHIVIST = {
     'EVENTS_PER_JOB': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_EVENTS_PER_JOB', 10000)),
     'BLOCK_TIMEOUT': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT', 60000)),
 }
+
+#
+# Session cookies configuration
+#
+# https://docs.djangoproject.com/en/4.2/topics/http/sessions/#settings
+#
+
+SESSION_COOKIE_AGE = 1800
+SESSION_COOKIE_SECURE = True
+SESSION_SAVE_EVERY_REQUEST = True

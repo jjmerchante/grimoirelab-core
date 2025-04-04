@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from .models import Repository
 from grimoirelab.core.scheduler.scheduler import schedule_task
@@ -57,9 +57,10 @@ def add_repository(request):
 
     # Create the task and the repository
     try:
-        repository = Repository.objects.create(uri=uri,
-                                               datasource_type=datasource_type,
-                                               datasource_category=datasource_category)
+        with transaction.atomic():
+            repository = Repository.objects.create(uri=uri,
+                                                   datasource_type=datasource_type,
+                                                   datasource_category=datasource_category)
     except IntegrityError:
         return Response({"error": "Repository already exists"}, status=405)
 
