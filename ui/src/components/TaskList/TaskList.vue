@@ -117,9 +117,10 @@ export default {
       tab: 'all',
       tabs: [
         { text: 'All', value: 'all' },
-        { text: 'Running', value: 3 },
-        { text: 'Failed', value: 5 },
-        { text: 'Enqueued', value: 2 }
+        { text: 'Running', value: { status: 3 } },
+        { text: 'Failed', value: { status: 5 } },
+        { text: 'Failed last run', value: { last_run_status: 5 } },
+        { text: 'Enqueued', value: { status: 2 } }
       ],
       orderBy: null
     }
@@ -128,7 +129,7 @@ export default {
     emitFilters() {
       let filters = {}
       if (this.tab !== 'all') {
-        Object.assign(filters, { status: this.tab })
+        Object.assign(filters, this.tab)
       }
       if (this.orderBy) {
         Object.assign(filters, { ordering: this.orderBy })
