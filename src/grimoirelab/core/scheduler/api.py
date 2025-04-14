@@ -18,7 +18,7 @@
 
 import django_rq
 
-from django.db.models import F
+from django.db.models import F, OuterRef, Subquery
 
 from rest_framework import (
     filters,
@@ -149,8 +149,18 @@ class EventizerTaskList(generics.ListAPIView):
     def get_queryset(self):
         queryset = EventizerTask.objects.all()
         status = self.request.query_params.get('status')
+        last_run_status = self.request.query_params.get('last_run_status')
         if status is not None:
-            queryset = queryset.filter(status=status)
+            if int(status) == SchedulerStatus.FAILED:
+                queryset = queryset.filter(jobs__status=status).distinct()
+            else:
+                queryset = queryset.filter(status=status)
+        if last_run_status is not None:
+            annotation = Subquery(get_registered_task_model('eventizer')[1].objects.filter(
+                task_id=OuterRef('id'),
+                finished_at__isnull=False
+            ).order_by('-job_num').values('status')[:1])
+            queryset = queryset.annotate(last_run_status=annotation).filter(last_run_status=last_run_status)
         return queryset
 
 
