@@ -113,7 +113,8 @@ export default {
       tabs: [
         { text: 'All', value: 'all' },
         { text: 'Failed', value: 5 },
-        { text: 'Completed', value: 4 }
+        { text: 'Completed', value: 4 },
+        { text: 'Canceled', value: 7 },
       ]
     }
   },

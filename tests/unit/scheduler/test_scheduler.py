@@ -339,7 +339,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
         job_db = task2.jobs.first()
         self.assertGreaterEqual(job_db.last_modified, before_dt)
         self.assertLessEqual(job_db.last_modified, after_dt)
-        self.assertEqual(job_db.status, SchedulerStatus.FAILED)
+        self.assertEqual(job_db.status, SchedulerStatus.CANCELED)
 
         # Task2 has a new job
         self.assertEqual(task2.jobs.count(), 2)
@@ -467,7 +467,7 @@ class TestCancelTask(GrimoireLabTestCase):
         super().setUp()
 
     def test_cancel_task(self):
-        """A task is correctly canceled and removed, including jobs"""
+        """A task is correctly canceled, including jobs"""
 
         task_args = {
             'a': 1,
@@ -496,20 +496,21 @@ class TestCancelTask(GrimoireLabTestCase):
         # Cancel task
         cancel_task(task1.uuid)
 
-        # Only jobs from task1 where deleted
-        jobs = self.job_class.objects.all()
-        self.assertEqual(len(jobs), 2)
+        # All the jobs are available
+        self.assertEqual(self.job_class.objects.count(), 4)
 
-        for job in jobs:
-            self.assertEqual(job.task.uuid, task2.uuid)
+        # Scheduled job from task2 is now canceled
+        jobs_canceled = self.job_class.objects.filter(task=task1, status=SchedulerStatus.CANCELED)
+        self.assertEqual(len(jobs_canceled), 1)
 
+        # Jobs are removed from rq
         for job_uuid in uuids:
             with self.assertRaises(rq.exceptions.NoSuchJobError):
                 rq.job.Job.fetch(job_uuid, connection=django_rq.get_connection())
 
-        # Task were also deleted from the database
-        with self.assertRaises(self.task_class.DoesNotExist):
-            task1.refresh_from_db()
+        # Task is canceled
+        task1.refresh_from_db()
+        self.assertEqual(task1.status, SchedulerStatus.CANCELED)
 
     def test_no_task_found(self):
         """An exception is raised when the task doesn't exist"""

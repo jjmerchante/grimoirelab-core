@@ -26,6 +26,8 @@ export default {
           return 'mdi-alert-circle-outline'
         case 'running':
           return 'mdi-sync'
+        case 'canceled':
+          return 'mdi-cancel'
         default:
           return 'mdi-clock-outline'
       }

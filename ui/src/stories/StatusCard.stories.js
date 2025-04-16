@@ -7,7 +7,7 @@ export default {
   argTypes: {
     status: {
       control: { type: 'select' },
-      options: ['new', 'enqueued', 'running', 'completed', 'failed', 'recovery']
+      options: ['new', 'enqueued', 'running', 'completed', 'failed', 'canceled', 'recovery']
     }
   }
 }

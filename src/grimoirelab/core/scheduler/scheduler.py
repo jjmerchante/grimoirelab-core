@@ -95,10 +95,10 @@ def schedule_task(
 
 
 def cancel_task(task_uuid: str) -> None:
-    """Cancel a task that is scheduled and delete all its jobs.
+    """Cancel a task that is scheduled and its jobs.
 
-    The task will be deleted from the database and all its jobs
-    too. Pending jobs will be also canceled and removed.
+    The task will be cancelled and all the jobs that are scheduled.
+    If the task is running, it will be stopped.
 
     :param task_uuid: uuid of the task to be cancelled.
 
@@ -117,7 +117,14 @@ def cancel_task(task_uuid: str) -> None:
             send_stop_job_command(connection, job_rq.id)
         job_rq.delete()
 
-    task.delete()
+        if job.status not in (SchedulerStatus.FAILED, SchedulerStatus.COMPLETED):
+            job.status = SchedulerStatus.CANCELED
+            job.save()
+
+    if task.status not in (SchedulerStatus.COMPLETED,
+                           SchedulerStatus.FAILED):
+        task.status = SchedulerStatus.CANCELED
+        task.save()
 
 
 def reschedule_task(task_uuid: str) -> None:
@@ -147,7 +154,7 @@ def reschedule_task(task_uuid: str) -> None:
         # Make sure it is running
         job = task.jobs.order_by('-scheduled_at').first()
         if _is_job_removed_or_stopped(job, task.default_job_queue):
-            job.save_run(SchedulerStatus.FAILED)
+            job.save_run(SchedulerStatus.CANCELED)
             _enqueue_task(task)
     else:
         _enqueue_task(task)
@@ -181,7 +188,7 @@ def maintain_tasks() -> None:
         current_time = datetime_utcnow()
         scheduled_at = max(task.scheduled_at, current_time)
 
-        job_db.save_run(SchedulerStatus.FAILED)
+        job_db.save_run(SchedulerStatus.CANCELED)
         _enqueue_task(task, scheduled_at=scheduled_at)
 
 

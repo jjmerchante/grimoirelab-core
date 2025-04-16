@@ -62,6 +62,7 @@ class SchedulerStatus(IntegerChoices):
     COMPLETED = 4, _("completed")
     FAILED = 5, _("failed")
     RECOVERY = 6, _("recovery")
+    CANCELED = 7, _("canceled")
 
 
 class Task(BaseModel):

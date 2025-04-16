@@ -46,13 +46,13 @@
       </v-col>
       <v-col class="pa-6 d-flex flex-column align-end">
         <v-btn
-          icon="mdi-delete"
+          icon="mdi-cancel"
           class="mb-1"
           color="danger"
           variant="text"
           size="small"
           density="comfortable"
-          @click.stop.prevent="$emit('delete', id)"
+          @click.stop.prevent="$emit('cancel', id)"
         />
         <v-btn
           icon="mdi-refresh"
@@ -73,7 +73,7 @@ import StatusIcon from '../StatusIcon.vue'
 export default {
   name: 'TaskListItem',
   components: { StatusCard, StatusIcon },
-  emits: ['delete', 'reschedule'],
+  emits: ['cancel', 'reschedule'],
   props: {
     backend: {
       type: String,
