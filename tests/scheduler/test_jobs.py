@@ -104,7 +104,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         )
         job = q.enqueue_job(job)
 
-        self.assertEqual(job.result, "Job executed successfully")
+        self.assertEqual(job.return_value(), "Job executed successfully")
         self.assertEqual(len(job.log), 1)
         self.assertEqual(job.log[0]['msg'], "This is a log message")
 
@@ -126,7 +126,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         )
         job = q.enqueue_job(job)
 
-        self.assertEqual(job.result, None)
+        self.assertEqual(job.return_value(), None)
         self.assertEqual(len(job.log), 2)
         self.assertEqual(job.log[0]['msg'], "This is a log message")
         self.assertRegex(job.log[1]['msg'], "Traceback")
