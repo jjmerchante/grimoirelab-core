@@ -16,11 +16,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import logging
 import os
 import signal
 import threading
 import time
+
+import structlog
 
 from grimoirelab.core.consumers.consumer_pool import ConsumerPool
 from grimoirelab.core.consumers.consumer import Consumer
@@ -28,10 +29,13 @@ from grimoirelab.core.consumers.consumer import Consumer
 from ..base import GrimoireLabTestCase
 
 
+logger = structlog.get_logger(__name__)
+
+
 class SampleConsumer(Consumer):
     def process_entries(self, entries, recovery=False):
         for entry in entries:
-            logging.info(f"Processing entry: {entry.message_id}")
+            logger.info(f"Processing entry: {entry.message_id}")
             self.ack_entries([entry.message_id])
 
 
@@ -59,7 +63,6 @@ class TestConsumerPool(GrimoireLabTestCase):
         self.assertEqual(pool.num_consumers, 10)
         self.assertEqual(pool.stream_block_timeout, 1000)
         self.assertTrue(pool.verbose)
-        self.assertEqual(pool.log_level, logging.DEBUG)
         self.assertEqual(pool.status, ConsumerPool.Status.IDLE)
 
     def test_clean_up_consumers(self):

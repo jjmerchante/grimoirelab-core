@@ -1,20 +1,41 @@
-from grimoirelab.core.config.settings import *  # noqa: F403,F401
-from grimoirelab.core.config.settings import INSTALLED_APPS, _RQ_DATABASE, RQ
-
+import os
 import warnings
+
+from grimoirelab.core.config.settings import *  # noqa: F403,F401
+from grimoirelab.core.config.settings import (
+    INSTALLED_APPS,
+    _RQ_DATABASE,
+    RQ,
+    LOGGING,
+)
 
 import django_rq.queues
 
 from fakeredis import FakeRedis, FakeStrictRedis
 
+
 INSTALLED_APPS.append("tests")
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": True,
-    "loggers": {
-        "grimoirelab.core": {"level": "CRITICAL"},
-    },
+GRIMOIRELAB_TESTING_VERBOSE = os.environ.get(
+    "GRIMOIRELAB_TESTING_VERBOSE",
+    "False",
+).lower() in ("true", "1")
+
+# Logging configuration for testing
+#
+# By default, logging is silent and doesn't print messages to the console.
+# Set 'GRIMOIRELAB_TESTING_VERBOSE' to 'True' to print messages to the console.
+#
+LOGGING["handlers"]["testing"] = {
+    "class": "logging.NullHandler",
+}
+
+LOGGING["loggers"] = {
+    "": {
+        "handlers": ["default"] if GRIMOIRELAB_TESTING_VERBOSE else ["testing"],
+        "level": "DEBUG",
+        "propagate": True,
+    }
 }
 
 SQL_MODE = [

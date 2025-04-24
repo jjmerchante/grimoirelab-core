@@ -651,6 +651,21 @@ doc = ["sphinx"]
 test = ["black", "codecov", "cryptography", "flake8", "isort", "pytest", "pytest-cov", "pytest-django"]
 
 [[package]]
+name = "django-ipware"
+version = "7.0.1"
+description = "A Django application to retrieve user's IP address"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "django-ipware-7.0.1.tar.gz", hash = "sha256:d9ec43d2bf7cdf216fed8d494a084deb5761a54860a53b2e74346a4f384cff47"},
+    {file = "django_ipware-7.0.1-py2.py3-none-any.whl", hash = "sha256:db16bbee920f661ae7f678e4270460c85850f03c6761a4eaeb489bdc91f64709"},
+]
+
+[package.dependencies]
+python-ipware = ">=2.0.3"
+
+[[package]]
 name = "django-rq"
 version = "3.1"
 description = "An app that provides django integration for RQ (Redis Queue)"
@@ -695,6 +710,28 @@ google = ["google-cloud-storage (>=1.36.1)"]
 libcloud = ["apache-libcloud"]
 s3 = ["boto3 (>=1.4.4)"]
 sftp = ["paramiko (>=1.15)"]
+
+[[package]]
+name = "django-structlog"
+version = "9.1.1"
+description = "Structured Logging for Django"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_structlog-9.1.1-py3-none-any.whl", hash = "sha256:5b6ac3abdf6549e94ccb35160b1f10266f1627c3ac77844571235a08a1ddae66"},
+    {file = "django_structlog-9.1.1.tar.gz", hash = "sha256:14342c6c824581f1e063c88a8bc52314cd67995a3bd4a4fc8c27ea37ccd78947"},
+]
+
+[package.dependencies]
+asgiref = ">=3.6.0"
+django = ">=4.2"
+django-ipware = ">=6.0.2"
+structlog = ">=21.4.0"
+
+[package.extras]
+celery = ["celery (>=5.1)"]
+commands = ["django-extensions (>=1.4.9)"]
 
 [[package]]
 name = "django-treebeard"
@@ -1965,6 +2002,21 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-ipware"
+version = "3.0.0"
+description = "A Python package to retrieve user's IP address"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "python_ipware-3.0.0-py3-none-any.whl", hash = "sha256:fc936e6e7ec9fcc107f9315df40658f468ac72f739482a707181742882e36b60"},
+    {file = "python_ipware-3.0.0.tar.gz", hash = "sha256:9117b1c4dddcb5d5ca49e6a9617de2fc66aec2ef35394563ac4eecabdf58c062"},
+]
+
+[package.extras]
+dev = ["coverage[toml]", "coveralls (>=3.3,<4.0)", "ruff", "twine"]
+
+[[package]]
 name = "pytz"
 version = "2025.2"
 description = "World timezone definitions, modern and historical"
@@ -2491,6 +2543,18 @@ dev = ["build", "hatch"]
 doc = ["sphinx"]
 
 [[package]]
+name = "structlog"
+version = "25.4.0"
+description = "Structured Logging for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "structlog-25.4.0-py3-none-any.whl", hash = "sha256:fe809ff5c27e557d14e613f45ca441aabda051d119ee5a0102aaba6ce40eed2c"},
+    {file = "structlog-25.4.0.tar.gz", hash = "sha256:186cd1b0a8ae762e29417095664adf1d6a31702160a46dacb7796ea82f7409e4"},
+]
+
+[[package]]
 name = "testcontainers"
 version = "4.13.2"
 description = "Python library for throwaway instances of anything that can run in a Docker container"
@@ -2737,4 +2801,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "facf8e2303129b9eb077590e3098c77685e4fbb6a37e7596559dd3f21ba92b79"
+content-hash = "c9f497741d2be093082ec76aee5e4bb3ec6d9b7fcbfe755459887944d8995aeb"

@@ -16,6 +16,9 @@
 import os
 from pathlib import Path
 
+from .logging import configure_grimoirelab_logging
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SILENCED_SYSTEM_CHECKS = ["django_mysql.E016"]
@@ -102,6 +105,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_rq",
+    "django_structlog",
     "corsheaders",
     "rest_framework",
     "grimoirelab.core.scheduler",
@@ -121,6 +125,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_structlog.middlewares.RequestMiddleware",
 ]
 
 ROOT_URLCONF = "grimoirelab.core.app.urls"
@@ -201,38 +206,6 @@ USE_TZ = True
 TIME_ZONE = "UTC"
 
 #
-# GrimoireLab Logging
-#
-# https://docs.djangoproject.com/en/4.2/topics/logging/#configuring-logging
-#
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "simple": {
-            "format": "[{asctime}] {message}",
-            "style": "{",
-        },
-        "verbose": {
-            "format": "[{asctime} - {levelname} - {name}] {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
-    },
-}
-
-
-#
 # Static files (CSS, JavaScript, Images)
 #
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -294,6 +267,16 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+#
+# GrimoireLab Logging
+#
+# Set GRIMOIRELAB_LOGS_JSON to enable JSON logging with values 'true' or '1'.
+#
+
+GRIMOIRELAB_LOGS_JSON = os.environ.get("GRIMOIRELAB_LOGS_JSON", "False").lower() in ("true", "1")
+
+LOGGING = configure_grimoirelab_logging(json_mode=GRIMOIRELAB_LOGS_JSON, debug=DEBUG)
 
 #
 # GrimoireLab uses RQ to run background and async jobs.
