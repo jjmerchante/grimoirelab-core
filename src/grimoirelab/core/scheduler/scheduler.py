@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import typing
 import uuid
 
@@ -27,6 +26,7 @@ import django.db
 import django_rq
 import rq.exceptions
 import rq.job
+import structlog
 
 from django.conf import settings
 from rq.registry import StartedJobRegistry
@@ -59,7 +59,8 @@ RQ_JOB_STOPPED_STATUS = [
     rq.job.JobStatus.CANCELED,
 ]
 
-logger = logging.getLogger(__name__)
+
+logger = structlog.get_logger(__name__)
 
 
 def schedule_task(
@@ -87,6 +88,15 @@ def schedule_task(
         task_args, job_interval, job_max_retries, burst=burst, *args, **kwargs
     )
     _enqueue_task(task, scheduled_at=datetime_utcnow())
+
+    logger.info(
+        "task scheduled",
+        task_uuid=task.uuid,
+        task_args=task_args,
+        job_interval=job_interval,
+        job_max_retries=job_max_retries,
+        burst=burst,
+    )
 
     return task
 
@@ -122,6 +132,8 @@ def cancel_task(task_uuid: str) -> None:
         task.status = SchedulerStatus.CANCELED
         task.save()
 
+    logger.info("task canceled", task_uuid=task.uuid)
+
 
 def reschedule_task(task_uuid: str) -> None:
     """Reschedule a task
@@ -147,7 +159,6 @@ def reschedule_task(task_uuid: str) -> None:
         except (rq.exceptions.NoSuchJobError, rq.exceptions.InvalidJobOperation):
             pass
         _schedule_job(task, job, datetime_utcnow(), job.job_args)
-
     elif task.status == SchedulerStatus.RUNNING:
         # Make sure it is running
         job = task.jobs.order_by("-scheduled_at").first()
@@ -156,6 +167,8 @@ def reschedule_task(task_uuid: str) -> None:
             _enqueue_task(task)
     else:
         _enqueue_task(task)
+
+    logger.info("task rescheduled", task_uuid=task.uuid)
 
 
 def maintain_tasks() -> None:
@@ -178,13 +191,20 @@ def maintain_tasks() -> None:
         if not _is_job_removed_or_stopped(job_db, task.default_job_queue):
             continue
 
-        logger.info(f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling.")
+        logger.error(
+            "Job stopped but task wasn't updated; rescheduling",
+            task_uuid=task.uuid,
+            job_uuid=job_db.uuid,
+            queue=job_db.queue,
+        )
 
         current_time = datetime_utcnow()
         scheduled_at = max(task.scheduled_at, current_time)
 
         job_db.save_run(SchedulerStatus.CANCELED)
         _enqueue_task(task, scheduled_at=scheduled_at)
+
+    logger.debug("Maintenance of tasks completed")
 
 
 def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
@@ -246,10 +266,6 @@ def _enqueue_task(task: Task, scheduled_at: datetime.datetime | None = None) -> 
 
     _schedule_job(task, job, scheduled_at, job_args)
 
-    logger.info(
-        f"Job #{job.job_id} (task: {task.task_id}) enqueued in '{job.queue}' at {scheduled_at}"
-    )
-
     return job
 
 
@@ -277,14 +293,28 @@ def _schedule_job(
         task.status = SchedulerStatus.ENQUEUED
         job.scheduled_at = scheduled_at
         task.scheduled_at = scheduled_at
-    except Exception as e:
-        logger.error(f"Error enqueuing job of task {task.task_id}. Not scheduled. Error: {e}")
+    except Exception as ex:
         job.status = SchedulerStatus.FAILED
         task.status = SchedulerStatus.FAILED
-        raise e
+        logger.error(
+            "job scheduling",
+            job_uuid=job.uuid,
+            task_uuid=task.uuid,
+            exc_info=ex,
+        )
+        raise ex
     finally:
         job.save()
         task.save()
+
+    logger.info(
+        "job scheduled",
+        job_uuid=job.uuid,
+        job_args=job_args,
+        task_uuid=task.uuid,
+        queue=job.queue,
+        scheduled_at=scheduled_at,
+    )
 
     return rq_job
 
@@ -304,17 +334,21 @@ def _on_success_callback(
     try:
         job_db = find_job(job.id)
     except NotFoundError:
-        logger.error("Job not found. Not rescheduling.")
+        logger.error("job not found", job_uuid=job.uuid)
         return
 
-    job_db.save_run(SchedulerStatus.COMPLETED, progress=result, logs=job.meta.get("log", None))
+    job_db.save_run(
+        SchedulerStatus.COMPLETED,
+        progress=result,
+        logs=job.meta.get("log", None),
+    )
     task = job_db.task
 
-    logger.info(f"Job #{job_db.job_id} (task: {task.task_id}) completed.")
+    logger.info("job completed", job_uuid=job_db.uuid, task_uuid=task.uuid)
 
     # Reschedule task
     if task.burst:
-        logger.info(f"Task: {task.task_id} finished. It was a burst task. It won't be rescheduled.")
+        logger.info("task completed", task_uuid=task.uuid, burst=True)
         return
     else:
         scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
@@ -342,27 +376,31 @@ def _on_failure_callback(
     try:
         job_db = find_job(job.id)
     except NotFoundError:
-        logger.error("Job not found. Not rescheduling.")
+        logger.error("job not found", job_uuid=job.uuid)
         return
 
     job_db.save_run(
-        SchedulerStatus.FAILED, progress=job.meta["progress"], logs=job.meta.get("log", None)
+        SchedulerStatus.FAILED,
+        progress=job.meta["progress"],
+        logs=job.meta.get("log", None),
     )
     task = job_db.task
 
-    logger.error(f"Job #{job_db.job_id} (task: {task.task_id}) failed; error: {value}")
+    logger.error("job failed", job_uuid=job_db.uuid, task_uuid=task.uuid, error=value)
 
-    # Try to retry the task
+    # Define new log to reuse parameters
+    log = logger.bind(task_uuid=task.uuid, job_uuid=job_db.uuid)
+
+    # Retry the task, if possible
     if task.failures >= task.job_max_retries:
-        logger.error(f"Task: {task.task_id} max retries reached; cancelled")
+        log.error("task failed; max retries reached", max_failures=task.failures)
         return
     elif not task.can_be_retried():
-        logger.error(f"Task: {task.task_id} can't be retried")
+        log.error("task failed; can't be retried")
         return
     else:
-        logger.error(f"Task: {task.task_id} failed but task will be retried")
         task.status = SchedulerStatus.RECOVERY
         task.save()
-
-    scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
-    _enqueue_task(task, scheduled_at=scheduled_at)
+        scheduled_at = datetime_utcnow() + datetime.timedelta(seconds=task.job_interval)
+        _enqueue_task(task, scheduled_at=scheduled_at)
+        log.error("task failed; recovered")

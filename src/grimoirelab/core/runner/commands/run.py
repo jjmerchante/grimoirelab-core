@@ -31,6 +31,7 @@ import django.core.wsgi
 import django_rq
 import opensearchpy
 import redis
+import structlog
 
 from django.conf import settings
 from django.db import connections, OperationalError
@@ -42,6 +43,9 @@ if typing.TYPE_CHECKING:
 
 DEFAULT_BACKOFF_MAX = 60
 DEFAULT_MAX_RETRIES = 10
+
+
+logger = structlog.get_logger(__name__)
 
 
 @click.group()
@@ -122,17 +126,17 @@ def periodic_maintain_tasks(interval):
     while True:
         try:
             maintain_tasks()
-            logging.info("Maintenance tasks executed successfully.")
-        except redis.exceptions.ConnectionError as e:
-            logging.error(f"Redis connection error during maintenance tasks: {e}")
-        except django.db.utils.OperationalError as e:
-            logging.error(f"Database connection error during maintenance tasks: {e}")
+            logger.info("Maintenance tasks executed successfully")
+        except redis.exceptions.ConnectionError as exc:
+            logger.error("Redis connection error during maintenance tasks", err=exc)
+        except django.db.utils.OperationalError as exc:
+            logger.error("Database connection error during maintenance tasks", err=exc)
             connections.close_all()
-        except Exception as e:
-            logging.error("Error during maintenance tasks: %s", e)
+        except Exception as exc:
+            logger.error("Unexpected error during maintenance tasks", err=exc)
             raise
         except KeyboardInterrupt:
-            logging.info("Maintenance task interrupted. Exiting...")
+            logger.info("Maintenance task interrupted. Exiting...")
             return
 
         time.sleep(interval)
@@ -146,7 +150,7 @@ def _maintenance_process(maintenance_interval):
     )
     process.start()
 
-    logging.info("Started maintenance process with PID %s", process.pid)
+    logger.info("Started maintenance process", pid=process.pid)
 
     return process
 
@@ -217,6 +221,10 @@ def _wait_opensearch_ready(
 ) -> None:
     """Wait for OpenSearch to be available before starting"""
 
+    # The 'opensearch' library writes logs with the exceptions while
+    # connecting to the database. Disable them temporarily until
+    # the service is up. We have to use logging library because structlog
+    # doesn't allow to disable a logger dynamically.
     os_logger = logging.getLogger("opensearch")
     os_logger.disabled = True
 
@@ -245,24 +253,26 @@ def _wait_opensearch_ready(
             # Index still not created, but OpenSearch is up
             break
         except opensearchpy.exceptions.AuthorizationException:
-            logging.error("OpenSearch Authorization failed. Check your credentials.")
+            logger.error("OpenSearch Authorization failed. Check your credentials.")
             exit(1)
         except (
             opensearchpy.exceptions.ConnectionError,
             opensearchpy.exceptions.TransportError,
-        ) as e:
-            logging.warning(
-                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready: {e}"
+        ) as exc:
+            logger.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready",
+                err=exc,
             )
             _sleep_backoff(attempt)
 
     else:
-        logging.error("Failed to connect to OpenSearch.")
+        logger.error("Failed to connect to OpenSearch.")
         exit(1)
 
+    # Enable back 'opensearch' library logs
     os_logger.disabled = False
 
-    logging.info("OpenSearch is ready.")
+    logger.info("OpenSearch is ready.")
 
 
 def _wait_redis_ready():
@@ -273,16 +283,17 @@ def _wait_redis_ready():
             redis_conn = django_rq.get_connection()
             redis_conn.ping()
             break
-        except redis.exceptions.ConnectionError as e:
-            logging.warning(
-                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Redis connection not ready: {e}"
+        except redis.exceptions.ConnectionError as exc:
+            logger.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Redis connection not ready",
+                err=exc,
             )
             _sleep_backoff(attempt)
     else:
-        logging.error("Failed to connect to Redis server")
+        logger.error("Failed to connect to Redis server")
         exit(1)
 
-    logging.info("Redis is ready")
+    logger.info("Redis is ready")
 
 
 def _wait_database_ready():
@@ -296,17 +307,18 @@ def _wait_database_ready():
                     pass  # Just test the connection
                 break
 
-        except OperationalError as e:
-            logging.warning(
-                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Database connection not ready: {e.__cause__}"
+        except OperationalError as exc:
+            logger.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Database connection not ready",
+                err=exc.__cause__,
             )
             _sleep_backoff(attempt)
     else:
         error_msg = "Failed to connect to the database after all retries"
-        logging.error(error_msg)
+        logger.error(error_msg)
         raise ConnectionError(error_msg)
 
-    logging.info("Database is ready.")
+    logger.info("Database is ready.")
 
     # Close all database connections to avoid timed out connections
     connections.close_all()

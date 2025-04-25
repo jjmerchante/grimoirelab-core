@@ -18,11 +18,11 @@
 
 from __future__ import annotations
 
-import logging
 import typing
 
 import django.db.transaction
 import rq.worker
+import structlog
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
     from .jobs import GrimoireLabJob
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GrimoireLabWorker(rq.worker.Worker):

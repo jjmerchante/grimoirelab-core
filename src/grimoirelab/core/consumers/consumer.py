@@ -27,6 +27,7 @@ from collections import namedtuple
 from multiprocessing import Event as ProcessEvent
 
 import redis
+import structlog
 
 if typing.TYPE_CHECKING:
     from typing import Iterable
@@ -170,7 +171,9 @@ class Consumer:
     def recover_stream_entries(self, recover_idle_time: int = RECOVER_IDLE_TIME) -> Iterable[Entry]:
         """Transfers ownership of pending entries idle for 'recover_idle_time'."""
 
-        self.logger.debug(f"Recovering events from '{self.stream_name}:{self.consumer_group}'")
+        self.logger.debug(
+            "recovering events", stream=self.stream_name, consumer_group=self.consumer_group
+        )
 
         while True:
             response = self.connection.xautoclaim(
@@ -199,6 +202,10 @@ class Consumer:
             if self._stop_event.is_set():
                 break
 
+        self.logger.debug(
+            "events recovered", stream=self.stream_name, consumer_group=self.consumer_group
+        )
+
     def process_entries(self, entries: Iterable[Entry], recovery: bool = False):
         """Process entries (implement this method in subclasses).
 
@@ -222,12 +229,11 @@ class Consumer:
     def stop(self):
         """Stop the consumer gracefully."""
 
-        self.logger.info(f"Stopping consumer '{self.consumer_name}'.")
-
         self._stop_event.set()
+        self.logger.info("consumer stopped", consumer=self.consumer_name)
 
     def _create_logger(self):
-        logger = logging.getLogger(name=f"{self.__class__.__name__}")
+        logger = structlog.get_logger(self.__class__.__name__)
         logger.setLevel(self.logging_level)
         return logger
 

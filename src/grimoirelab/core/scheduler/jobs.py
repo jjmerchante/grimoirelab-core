@@ -22,6 +22,7 @@ import logging
 import typing
 
 import rq.job
+import structlog
 
 if typing.TYPE_CHECKING:
     from typing import Any
@@ -29,7 +30,7 @@ if typing.TYPE_CHECKING:
     from rq.types import FunctionReferenceType
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GrimoireLabJob(rq.job.Job):
@@ -129,9 +130,9 @@ class GrimoireLabJob(rq.job.Job):
         try:
             self._add_log_handler()
             return super()._execute()
-        except Exception:
-            logger.exception(f"Error running job {self.id}.")
-            raise
+        except Exception as ex:
+            logger.error("job exception", job_id=self.id, exc_info=ex)
+            raise ex
         finally:
             self._remove_log_handler()
 

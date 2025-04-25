@@ -18,11 +18,11 @@
 
 from __future__ import annotations
 
-import logging
 import typing
 
 import cloudevents.conversion
-import rq.job
+import rq
+import structlog
 
 import perceval.backend
 import perceval.backends
@@ -37,7 +37,7 @@ if typing.TYPE_CHECKING:
     from datetime import datetime
 
 
-logger = logging.getLogger("chronicler")
+logger = structlog.get_logger("__name__")
 
 
 def chronicler_job(
