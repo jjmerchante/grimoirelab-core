@@ -209,7 +209,7 @@ LOGGING = {
             'style': '{',
         },
         'verbose': {
-            'format': '[{asctime} - {levelname} - {name}:{lineno}] {message}',
+            'format': '[{asctime} - {levelname} - {name}] {message}',
             'style': '{',
         },
     },
@@ -289,7 +289,6 @@ REST_FRAMEWORK = {
 #
 
 GRIMOIRELAB_Q_EVENTIZER_JOBS = os.environ.get('GRIMOIRELAB_Q_EVENTIZER_JOBS', 'eventizer_jobs')
-GRIMOIRELAB_Q_ARCHIVIST_JOBS = os.environ.get('GRIMOIRELAB_Q_ARCHIVIST_JOBS', 'storage_jobs')
 
 _RQ_DATABASE = {
     'HOST': os.environ.get('GRIMOIRELAB_REDIS_HOST', '127.0.0.1'),
@@ -299,8 +298,8 @@ _RQ_DATABASE = {
 }
 
 RQ_QUEUES = {
+    "default": _RQ_DATABASE,
     GRIMOIRELAB_Q_EVENTIZER_JOBS: _RQ_DATABASE,
-    GRIMOIRELAB_Q_ARCHIVIST_JOBS: _RQ_DATABASE,
 }
 
 GRIMOIRELAB_EVENTS_STREAM_NAME = os.environ.get('GRIMOIRELAB_EVENTS_STREAM_NAME',
@@ -331,15 +330,13 @@ GRIMOIRELAB_GIT_STORAGE_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.percev
 # Archivist configuration
 #
 GRIMOIRELAB_ARCHIVIST = {
-    'WORKERS': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_WORKERS', 10)),
-    'STORAGE_TYPE': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_TYPE', 'opensearch'),
     'STORAGE_URL': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_URL', 'https://admin:admin@localhost:9200'),
     'STORAGE_USERNAME': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_USERNAME', ''),
     'STORAGE_PASSWORD': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_PASSWORD', ''),
     'STORAGE_INDEX': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_INDEX', 'events'),
     'STORAGE_VERIFY_CERT': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_VERIFY_CERT', 'False').lower() in ('true', '1'),
-    'EVENTS_PER_JOB': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_EVENTS_PER_JOB', 10000)),
     'BLOCK_TIMEOUT': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT', 60000)),
+    'BULK_SIZE': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_BULK_SIZE', 100)),
 }
 
 #
