@@ -6,49 +6,32 @@
       :loading="isLoading"
       :pages="pages"
       :current-page="currentPage"
-      @create="createTask($event)"
-      @cancel="confirmCancelTask($event)"
+      @cancel="confirmCancel(cancelTask, $event)"
       @reschedule="rescheduleTask($event)"
       @update:page="pollTasks($event, filters)"
       @update:status="pollTasks(1, $event)"
       @update:filters="pollTasks(1, $event)"
     />
-    <v-snackbar v-model="snackbar.open" :color="snackbar.color">
-      {{ snackbar.text }}
-    </v-snackbar>
-    <v-dialog v-model="dialog.open" width="auto">
-      <v-card class="pa-1" width="400" :title="dialog.text">
-        <template #actions>
-          <v-spacer />
-          <v-btn color="primary" text="Cancel" variant="plain" @click="dialog.open = false"></v-btn>
-          <v-btn color="primary" text="confirm" variant="flat" @click="dialog.action"></v-btn>
-        </template>
-      </v-card>
-    </v-dialog>
+    <v-snackbar v-model="snackbarProps.isOpen" v-bind="snackbarProps" />
+    <confirm-modal v-model:is-open="modalProps.isOpen" v-bind="modalProps" />
   </v-container>
 </template>
 <script>
 import { API } from '@/services/api'
 import { useIsLoading } from '@/composables/loading'
+import useModal from '@/composables/useModal'
+import useSnackbar from '@/composables/useSnackbar'
 import TaskList from '@/components/TaskList/TaskList.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 export default {
-  components: { TaskList },
+  components: { TaskList, ConfirmModal },
   data() {
     return {
       tasks: [],
       pages: 1,
       currentPage: 1,
       count: 0,
-      snackbar: {
-        open: false,
-        color: 'success',
-        text: ''
-      },
-      dialog: {
-        open: false,
-        action: null
-      },
       interval: 30000,
       pollID: null,
       filters: {}
@@ -61,47 +44,18 @@ export default {
     clearTimeout(this.pollID)
   },
   methods: {
-    async createTask(formData) {
-      try {
-        const response = await API.scheduler.create(formData)
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'success',
-          text: response.data.message
-        })
-        this.fetchTasks(this.currentPage)
-      } catch (error) {
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'error',
-          text: error.response?.data?.message || error
-        })
-      }
-    },
-    confirmCancelTask(taskId) {
-      Object.assign(this.dialog, {
-        open: true,
-        text: `Stop task ${taskId}?`,
-        action: () => this.cancelTask(taskId)
-      })
-    },
     async cancelTask(taskId) {
       try {
         await API.scheduler.cancel(taskId)
-        Object.assign(this.snackbar, {
-          open: true,
+        this.openSnackbar({
           color: 'success',
           text: `Canceled task ${taskId}`
         })
-        this.fetchTasks(this.currentPage)
+        this.pollTasks(this.currentPage)
       } catch (error) {
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'error',
-          text: error.response?.data?.message || error
-        })
+        this.openErrorSnackbar(error)
       }
-      this.dialog = false
+      this.closeModal()
     },
     async fetchTasks(page = 1, filters = this.filters) {
       try {
@@ -124,18 +78,13 @@ export default {
     async rescheduleTask(taskId) {
       try {
         await API.scheduler.reschedule(taskId)
-        Object.assign(this.snackbar, {
-          open: true,
+        this.openSnackbar({
           color: 'success',
           text: `Rescheduled task ${taskId}`
         })
-        this.fetchTasks(this.currentPage)
+        this.pollTasks(this.currentPage)
       } catch (error) {
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'error',
-          text: error.response?.data?.message || error
-        })
+        this.openErrorSnackbar(error)
       }
     },
     async pollTasks(page, filters) {
@@ -143,19 +92,26 @@ export default {
       try {
         await this.fetchTasks(page, filters)
       } catch (error) {
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'error',
-          text: error
-        })
+        this.openErrorSnackbar(error)
       } finally {
-        this.pollID = setTimeout(() => (this.pollTasks(page, filters)), this.interval)
+        this.pollID = setTimeout(() => this.pollTasks(page, filters), this.interval)
       }
     }
   },
   setup() {
     const { isLoading } = useIsLoading()
-    return { isLoading }
+    const { modalProps, confirmCancel, closeModal } = useModal()
+    const { snackbarProps, openSnackbar, openErrorSnackbar } = useSnackbar()
+
+    return {
+      isLoading,
+      modalProps,
+      confirmCancel,
+      closeModal,
+      snackbarProps,
+      openSnackbar,
+      openErrorSnackbar
+    }
   }
 }
 </script>
