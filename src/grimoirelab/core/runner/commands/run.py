@@ -23,14 +23,16 @@ import os
 import time
 import typing
 
+import certifi
 import click
 import django.core
 import django.core.wsgi
 import django_rq
+import opensearchpy
 import redis
-import requests
 
 from django.conf import settings
+from urllib3.util import create_urllib3_context
 
 if typing.TYPE_CHECKING:
     from click import Context
@@ -130,24 +132,53 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(backoff)
 
 
-def _wait_opensearch_ready(url, verify_certs) -> None:
+def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None:
     """Wait for OpenSearch to be available before starting"""
+
+    os_logger = logging.getLogger("opensearch")
+    os_logger.disabled = True
+
+    context = None
+    if verify_certs:
+        # Use certificates from the local system and certifi
+        context = create_urllib3_context()
+        context.load_default_certs()
+        context.load_verify_locations(certifi.where())
+
+    if username and password:
+        auth = (username, password)
+    else:
+        auth = None
 
     for attempt in range(DEFAULT_MAX_RETRIES):
         try:
-            r = requests.get(url,
-                             verify=verify_certs)
-            r.raise_for_status()
+            client = opensearchpy.OpenSearch(
+                hosts=[url],
+                http_auth=auth,
+                http_compress=True,
+                verify_certs=verify_certs,
+                ssl_context=context,
+                ssl_show_warn=False,
+            )
+            client.search(index=index, size=0)
             break
-        except (requests.exceptions.ConnectionError, requests.HTTPError) as e:
-            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready")
+        except opensearchpy.exceptions.NotFoundError:
+            # Index still not created, but OpenSearch is up
+            break
+        except opensearchpy.exceptions.AuthorizationException:
+            logging.error("Authorization failed. Check your credentials.")
+            exit(1)
+        except opensearchpy.exceptions.ConnectionError:
+            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready.")
             _sleep_backoff(attempt)
 
     else:
-        logging.error("Failed to connect to OpenSearch")
+        logging.error("Failed to connect to OpenSearch.")
         exit(1)
 
-    logging.info("OpenSearch is ready")
+    os_logger.disabled = False
+
+    logging.info("OpenSearch is ready.")
 
 
 def _wait_redis_ready():
@@ -196,6 +227,9 @@ def archivists(workers: int, verbose: bool, burst: bool):
     from grimoirelab.core.consumers.archivist import OpenSearchArchivistPool
 
     _wait_opensearch_ready(settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
+                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME'],
+                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD'],
+                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX'],
                            settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'])
     _wait_redis_ready()
 
