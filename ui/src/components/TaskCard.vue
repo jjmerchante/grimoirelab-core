@@ -27,7 +27,7 @@
         </v-card-subtitle>
       </v-col>
       <v-divider class="mt-2" vertical></v-divider>
-      <v-col cols="6" class="px-4 py-6 mt-2">
+      <v-col cols="5" class="px-4 py-6 mt-2">
         <p class="pb-2 text-body-2">
           <v-icon color="medium-emphasis" size="small" start> mdi-calendar </v-icon>
           Scheduled for
@@ -50,6 +50,24 @@
           failure{{ failures > 1 ? 's' : '' }}
         </p>
       </v-col>
+      <v-col class="px-4 py-6 mt-1 d-flex flex-column align-end">
+        <v-btn
+          icon="mdi-cancel"
+          class="mb-"
+          color="danger"
+          variant="text"
+          size="small"
+          density="comfortable"
+          @click="$emit('cancel', id)"
+        />
+        <v-btn
+          icon="mdi-refresh"
+          variant="text"
+          size="small"
+          density="comfortable"
+          @click="$emit('reschedule', id)"
+        />
+      </v-col>
     </v-row>
   </status-card>
 </template>
@@ -61,6 +79,7 @@ import StatusIcon from './StatusIcon.vue'
 export default {
   name: 'TaskCard',
   components: { StatusCard, StatusIcon },
+  emits: ['cancel', 'reschedule'],
   props: {
     age: {
       type: [Number, String],
