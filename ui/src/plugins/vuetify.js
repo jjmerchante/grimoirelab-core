@@ -28,6 +28,7 @@ export default createVuetify({
           recovery: '#f4bc00',
           completed: '#3fa500',
           failed: '#f41900',
+          canceled: '#777777',
           icon: '#636c76'
         }
       },

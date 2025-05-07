@@ -142,6 +142,12 @@ class EventizerTask(Task):
                 job_args = args_gen.recovery_args(job.job_args['job_args'], progress)
             else:
                 job_args = args_gen.initial_args(self.task_args)
+        elif self.status == SchedulerStatus.CANCELED:
+            job = self.jobs.order_by('-job_num').first()
+            if job and job.status == SchedulerStatus.CANCELED:
+                job_args = job.job_args['job_args']
+            else:
+                job_args = args_gen.initial_args(self.task_args)
         else:
             job_args = args_gen.initial_args(self.task_args)
 

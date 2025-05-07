@@ -65,7 +65,7 @@
       :last-execution="task.last_run"
       :uri="task.task_args?.uri"
       class="mb-3"
-      @delete="$emit('delete', $event)"
+      @cancel="$emit('cancel', $event)"
       @reschedule="$emit('reschedule', $event)"
     ></task-list-item>
 
@@ -85,7 +85,7 @@ import TaskListItem from './TaskListItem.vue'
 export default {
   name: 'TaskList',
   components: { OrderSelector, TaskListItem },
-  emits: ['delete', 'reschedule', 'update:page', 'update:filters'],
+  emits: ['cancel', 'reschedule', 'update:page', 'update:filters'],
   props: {
     tasks: {
       type: Array,
@@ -120,7 +120,8 @@ export default {
         { text: 'Running', value: { status: 3 } },
         { text: 'Failed', value: { status: 5 } },
         { text: 'Failed last run', value: { last_run_status: 5 } },
-        { text: 'Enqueued', value: { status: 2 } }
+        { text: 'Enqueued', value: { status: 2 } },
+        { text: 'Canceled', value: { status: 7 } }
       ],
       orderBy: null
     }

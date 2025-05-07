@@ -7,7 +7,7 @@
       :pages="pages"
       :current-page="currentPage"
       @create="createTask($event)"
-      @delete="confirmDeleteTask($event)"
+      @cancel="confirmCancelTask($event)"
       @reschedule="rescheduleTask($event)"
       @update:page="pollTasks($event, filters)"
       @update:status="pollTasks(1, $event)"
@@ -78,20 +78,20 @@ export default {
         })
       }
     },
-    confirmDeleteTask(taskId) {
+    confirmCancelTask(taskId) {
       Object.assign(this.dialog, {
         open: true,
-        text: `Delete task ${taskId}?`,
-        action: () => this.deleteTask(taskId)
+        text: `Stop task ${taskId}?`,
+        action: () => this.cancelTask(taskId)
       })
     },
-    async deleteTask(taskId) {
+    async cancelTask(taskId) {
       try {
-        await API.scheduler.delete(taskId)
+        await API.scheduler.cancel(taskId)
         Object.assign(this.snackbar, {
           open: true,
           color: 'success',
-          text: `Deleted task ${taskId}`
+          text: `Canceled task ${taskId}`
         })
         this.fetchTasks(this.currentPage)
       } catch (error) {
