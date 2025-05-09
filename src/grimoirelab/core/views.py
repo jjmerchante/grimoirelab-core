@@ -46,5 +46,6 @@ def api_login(request):
         response = {
             'user': username,
             'isAdmin': user.is_superuser,
+            'groups': [group['name'] for group in user.groups.values('name')]
         }
         return Response(response)

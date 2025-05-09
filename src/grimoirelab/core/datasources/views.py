@@ -22,10 +22,12 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 
 from .models import Repository
-from grimoirelab.core.scheduler.scheduler import schedule_task
+from ..scheduler.scheduler import schedule_task
+from ..permissions import check_permissions
 
 
 @api_view(['POST'])
+@check_permissions(['datasources.add_repository'])
 def add_repository(request):
     """Create a Repository and start a Task to fetch items
 

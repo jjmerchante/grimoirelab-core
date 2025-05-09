@@ -21,6 +21,7 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -33,7 +34,7 @@ class TestAddRepository(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.user = get_user_model().objects.create_user(username='testuser', password='testpassword')
+        self.user = get_user_model().objects.create_user(username='testuser', password='testpassword', is_superuser=True)
         self.client.login(username='testuser', password='testpassword')
         self.url = reverse('add_repository')
         self.valid_data = {
@@ -132,3 +133,44 @@ class TestAddRepository(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json(), {"detail": "Authentication credentials were not provided."})
+
+    def test_add_repository_permission_denied(self):
+        """Test adding a repository with insufficient permissions."""
+
+        # Create a user without permissions
+        get_user_model().objects.create_user(username='nopermuser', password='nopermpassword')
+        self.client.login(username='nopermuser', password='nopermpassword')
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps(self.valid_data),
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json(), {"message": "You do not have permission to perform this action."})
+
+    @patch('grimoirelab.core.datasources.views.schedule_task')
+    def test_add_repository_valid_permissions(self, mock_schedule_task):
+        """Test adding a repository with valid permissions."""
+
+        mock_schedule_task.return_value = self.task
+
+        # Create a user with permissions
+        user = get_user_model().objects.create_user(username='user', password='password')
+        perm = Permission.objects.get(codename='add_repository')
+        user.user_permissions.add(perm)
+        self.client.login(username='user', password='password')
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps(self.valid_data),
+            content_type='application/json'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            'status': 'ok',
+            'task_id': self.task.uuid,
+            'message': f"Repository {self.valid_data['uri']} added correctly"
+        })

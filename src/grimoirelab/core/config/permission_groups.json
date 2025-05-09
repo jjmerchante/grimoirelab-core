@@ -1,0 +1,31 @@
+{
+  "groups": {
+    "admin": {
+      "datasources": {
+        "repository": ["add", "change", "delete", "view"]
+      },
+      "tasks": {
+        "eventizerjob": ["add", "change", "delete", "view"],
+        "eventizertask": ["add", "change", "delete", "view"]
+      }
+    },
+    "user": {
+      "datasources": {
+        "repository": ["add", "change", "delete", "view"]
+      },
+      "tasks": {
+        "eventizerjob": ["add", "change", "delete", "view"],
+        "eventizertask": ["add", "change", "delete", "view"]
+      }
+    },
+    "readonly": {
+      "datasources": {
+        "repository": ["view"]
+      },
+      "tasks": {
+        "eventizerjob": ["view"],
+        "eventizertask": ["view"]
+      }
+    }
+  }
+}

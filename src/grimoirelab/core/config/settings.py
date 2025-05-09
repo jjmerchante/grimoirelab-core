@@ -275,6 +275,15 @@ REST_FRAMEWORK = {
 }
 
 #
+# Path of the permission groups configuration file
+#
+# https://docs.djangoproject.com/en/4.2/topics/auth/default/#groups
+#
+
+PERMISSION_GROUPS_LIST_PATH = os.environ.get('GRIMOIRELAB_PERMISSION_GROUPS_LIST_PATH',
+                                            os.path.join(BASE_DIR, 'config', 'permission_groups.json'))
+
+#
 # GrimoireLab uses RQ to run background and async jobs.
 # You'll HAVE TO set the next parameters in order to run
 # them in the background.

@@ -25,9 +25,11 @@ from .scheduler import (
     schedule_task,
     reschedule_task as scheduler_reschedule_task
 )
+from ..permissions import check_permissions
 
 
 @api_view(['POST'])
+@check_permissions(['tasks.add_eventizertask'])
 def add_task(request):
     """Create a Task to fetch items
 
@@ -76,6 +78,7 @@ def add_task(request):
 
 
 @api_view(['POST'])
+@check_permissions(['tasks.change_eventizertask'])
 def reschedule_task(request):
     """Reschedule a Task
 
@@ -97,6 +100,7 @@ def reschedule_task(request):
 
 
 @api_view(['POST'])
+@check_permissions(['tasks.delete_eventizertask'])
 def cancel_task(request):
     """Cancel a Task
 

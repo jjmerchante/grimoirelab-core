@@ -18,6 +18,7 @@
 
 from django.conf import settings
 from rest_framework.permissions import BasePermission
+from rest_framework.response import Response
 
 
 class IsAuthenticated(BasePermission):
@@ -30,3 +31,19 @@ class IsAuthenticated(BasePermission):
             return True
 
         return bool(request.user and request.user.is_authenticated)
+
+
+def check_permissions(permissions):
+    """
+    Decorator to check if the user has the given permissions.
+    This only works for RestFramework views.
+    """
+    def decorator(func):
+        def wrapper(request, *args, **kwargs):
+            if not settings.GRIMOIRELAB_AUTHENTICATION_REQUIRED:
+                return func(request, *args, **kwargs)
+            if not request.user or not request.user.has_perms(permissions):
+                return Response({'message': 'You do not have permission to perform this action.'}, status=403)
+            return func(request, *args, **kwargs)
+        return wrapper
+    return decorator

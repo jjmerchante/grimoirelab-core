@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import getpass
+import json
 import os
 import sys
 import typing
@@ -61,6 +62,7 @@ def _setup():
 
     _create_database()
     _setup_database()
+    _setup_group_permissions()
     _install_static_files()
 
     click.secho("\nGrimoirelab configuration completed", fg='bright_cyan')
@@ -118,6 +120,44 @@ def _install_static_files():
                                         interactive=False)
 
     click.echo()
+
+
+def _setup_group_permissions():
+    """Create groups with the chosen permissions."""
+
+    from django.conf import settings
+    from django.contrib.auth.models import Group, Permission
+    from django.contrib.contenttypes.models import ContentType
+
+    with open(settings.PERMISSION_GROUPS_LIST_PATH, 'r') as f:
+        groups = json.load(f).get('groups', [])
+
+    for group_name, content_types in groups.items():
+        new_group, created = Group.objects.get_or_create(name=group_name)
+
+        for app_label, models in content_types.items():
+            for model, permissions in models.items():
+                try:
+                    content_type = ContentType.objects.get(
+                        app_label=app_label,
+                        model=model
+                    )
+                    for permission_name in permissions:
+                        codename = f"{permission_name}_{model}"
+                        if model == "custompermissions":
+                            codename = permission_name
+                        try:
+                            permission = Permission.objects.get(
+                                codename=codename,
+                                content_type=content_type
+                            )
+                            new_group.permissions.add(permission)
+                        except Permission.DoesNotExist:
+                            click.echo(f"Permission {permission_name} not found")
+                            continue
+                except ContentType.DoesNotExist:
+                    click.echo(f"ContentType {model} not found in {app_label}")
+                    continue
 
 
 @admin.command()
@@ -184,6 +224,29 @@ def _validate_username(username):
         username_field.clean(username, None)
     except ValidationError as e:
         return '; '.join(e.messages)
+
+
+@admin.command()
+@click.argument('username')
+@click.argument('permission_group')
+def set_permissions(username, permission_group):
+    """Assign a user to a specific permission group"""
+
+    from django.contrib.auth.models import Group
+    User = get_user_model()
+
+    try:
+        group = Group.objects.get(name=permission_group)
+        user = User.objects.get(username=username)
+    except Group.DoesNotExist:
+        click.echo(f"Group '{permission_group}' not found")
+        sys.exit(1)
+    except User.DoesNotExist:
+        click.echo(f"User '{username}' not found")
+        sys.exit(1)
+
+    user.groups.set([group.id])
+    click.echo(f"User '{username}' assigned to group '{permission_group}'.")
 
 
 @admin.group()
