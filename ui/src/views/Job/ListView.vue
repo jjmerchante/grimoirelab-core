@@ -29,7 +29,8 @@ export default {
       currentPage: 1,
       count: 0,
       pollID: null,
-      interval: 30000
+      interval: 30000,
+      filters: {}
     }
   },
   computed: {
@@ -49,6 +50,7 @@ export default {
           this.count = response.data.count
           this.pages = response.data.total_pages
           this.currentPage = response.data.page
+          this.filters = filters
         }
       } catch (error) {
         console.log(error)
@@ -61,7 +63,7 @@ export default {
       } catch (error) {
         console.log(error)
       } finally {
-        this.pollID = setTimeout(() => (this.pollJobs(filters)), this.interval)
+        this.pollID = setTimeout(() => this.pollJobs(filters), this.interval)
       }
     }
   },
@@ -74,6 +76,13 @@ export default {
   setup() {
     const { isLoading } = useIsLoading()
     return { isLoading }
+  },
+  watch: {
+    task(oldValue, newValue) {
+      if (newValue.status) {
+        this.pollJobs(this.filters)
+      }
+    }
   }
 }
 </script>
