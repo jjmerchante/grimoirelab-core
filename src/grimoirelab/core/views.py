@@ -17,6 +17,7 @@
 #
 
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import PasswordChangeForm
 from rest_framework import permissions
 from rest_framework.decorators import (
     api_view,
@@ -48,3 +49,20 @@ def api_login(request):
             'isAdmin': user.is_superuser,
         }
         return Response(response)
+
+
+@api_view(['POST'])
+def change_password(request):
+    form = PasswordChangeForm(request.user, request.POST)
+    if form.is_valid():
+        user = form.save()
+        response = {
+            'updated': user.username
+        }
+        return Response(response)
+    else:
+        response = {
+            'errors': form.errors.get_json_data()
+        }
+
+        return Response(response, status=400)
