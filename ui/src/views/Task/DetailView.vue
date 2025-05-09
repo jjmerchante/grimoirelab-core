@@ -27,7 +27,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { API } from '@/services/api'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import TaskCard from '@/components/TaskCard.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import useModal from '@/composables/useModal'
@@ -35,7 +35,6 @@ import useSnackbar from '@/composables/useSnackbar'
 
 const { closeModal, confirmCancel, modalProps } = useModal()
 const { openErrorSnackbar, openSnackbar, snackbarProps } = useSnackbar()
-const router = useRouter()
 const route = useRoute()
 const task = ref({})
 
@@ -50,7 +49,11 @@ async function cancelTask(id) {
   closeModal()
   try {
     await API.scheduler.cancel(id)
-    router.push({ name: 'taskList' })
+    openSnackbar({
+      color: 'success',
+      text: 'Canceled task'
+    })
+    fetchTask(id)
   } catch (error) {
     openErrorSnackbar(error)
   }
@@ -63,7 +66,7 @@ async function rescheduleTask(id) {
       color: 'success',
       text: 'Rescheduled task'
     })
-    this.fetchTask(id)
+    fetchTask(id)
   } catch (error) {
     openErrorSnackbar(error)
   }
