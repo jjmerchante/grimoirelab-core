@@ -249,6 +249,24 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = 'http://media.localhost/'
 
+
+# Use this variable to upload static files to a cloud storage.
+# Current supported cloud platforms are: GCP
+
+if 'GRIMOIRELAB_STATICFILES_STORAGE' in os.environ:
+    if os.environ['GRIMOIRELAB_STATICFILES_STORAGE'].lower() == 'gcp':
+        STORAGES = {
+            "staticfiles": {
+                "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+                "OPTIONS": {
+                    "bucket_name": os.environ['GRIMOIRELAB_GCP_BUCKET_NAME']
+                }
+            }
+        }
+    else:
+        raise ValueError(f"'{os.environ['GRIMOIRELAB_STATICFILES_STORAGE']}' storage is not supported")
+
+
 #
 # Default primary key field type
 #
