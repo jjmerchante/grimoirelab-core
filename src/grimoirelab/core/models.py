@@ -36,6 +36,7 @@ if typing.TYPE_CHECKING:
 # https://dev.mysql.com/doc/refman/5.5/en/charset-unicode-conversion.html
 MAX_SIZE_CHAR_INDEX = 191
 MAX_SIZE_CHAR_FIELD = 128
+MAX_SIZE_NAME_FIELD = 32
 
 
 class CreationDateTimeField(DateTimeField):
