@@ -11,7 +11,7 @@ from rest_framework_simplejwt.views import (
 from ..views import api_login
 
 from grimoirelab.core.scheduler.urls import urlpatterns as sched_urlpatterns
-from grimoirelab.core.datasources.urls import urlpatterns as datasources_urlpatterns
+from grimoirelab.core.datasources.urls import datasources_urlpatterns, ecosystems_urlpatterns
 
 urlpatterns = [
     path("login", api_login, name="api_login"),
@@ -19,5 +19,8 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("scheduler/", include(sched_urlpatterns)),
     path("datasources/", include(datasources_urlpatterns)),
-    re_path(r'^(?!static|scheduler).*$', TemplateView.as_view(template_name="index.html"))
+    path("api/v1/", include([
+        path("ecosystems/", include(ecosystems_urlpatterns))
+    ])),
+    re_path(r'^(?!static|scheduler|datasources).*$', TemplateView.as_view(template_name="index.html"))
 ]
