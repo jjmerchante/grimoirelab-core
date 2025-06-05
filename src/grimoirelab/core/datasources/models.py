@@ -59,3 +59,6 @@ class Ecosystem(BaseModel):
     name = CharField(unique=True, max_length=MAX_SIZE_NAME_FIELD, validators=[validate_name])
     title = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
     description = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
+
+    class Meta:
+        ordering = ['name']
