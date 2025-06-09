@@ -1,0 +1,825 @@
+openapi: 3.0.3
+info:
+  title: GrimoireLab API
+  version: 0.0.1
+paths:
+  /api/v1/ecosystems/:
+    get:
+      operationId: api_v1_ecosystems_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEcosystemList'
+          description: ''
+    post:
+      operationId: api_v1_ecosystems_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ecosystem'
+          description: ''
+  /api/v1/ecosystems/{name}/:
+    get:
+      operationId: api_v1_ecosystems_retrieve
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ecosystem'
+          description: ''
+    put:
+      operationId: api_v1_ecosystems_update
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Ecosystem'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ecosystem'
+          description: ''
+    patch:
+      operationId: api_v1_ecosystems_partial_update
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEcosystem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEcosystem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEcosystem'
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ecosystem'
+          description: ''
+    delete:
+      operationId: api_v1_ecosystems_destroy
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /datasources/add_repository:
+    post:
+      operationId: datasources_add_repository_create
+      description: |-
+        Create a Repository and start a Task to fetch items
+
+        The body should contain a JSON similar to:
+        {
+            'uri': "<repository_uri>",
+            'datasource_type': 'git',
+            'datasource_category': 'commit',
+            'scheduler': {
+                'job_interval': 86400,
+                'job_max_retries': 3,
+            }
+        }
+      tags:
+      - datasources
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /datasources/repositories/:
+    get:
+      operationId: datasources_repositories_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - datasources
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventizerRepositoryListList'
+          description: ''
+  /login:
+    post:
+      operationId: login_create
+      tags:
+      - login
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /scheduler/add_task:
+    post:
+      operationId: scheduler_add_task_create
+      description: |-
+        Create a Task to fetch items
+
+        The body should contain a JSON similar to:
+        {
+            'type': 'eventizer',
+            'task_args': {
+                'datasource_type': 'git',
+                'datasource_category': 'commit',
+                'backend_args': {
+                    'uri': 'https://github.com/chaoss/grimoirelab.git'
+                }
+            },
+            'scheduler': {
+                'job_interval': 86400,
+                'job_max_retries': 3
+            }
+        }
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /scheduler/cancel_task:
+    post:
+      operationId: scheduler_cancel_task_create
+      description: |-
+        Cancel a Task
+
+        The body should contain the task id to cancel:
+        {
+            'taskId': 'task_id'
+        }
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /scheduler/reschedule_task:
+    post:
+      operationId: scheduler_reschedule_task_create
+      description: |-
+        Reschedule a Task
+
+        The body should contain the task id to reschedule:
+        {
+            'taskId': 'task_id'
+        }
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /scheduler/tasks/:
+    get:
+      operationId: scheduler_tasks_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventizerTaskListList'
+          description: ''
+  /scheduler/tasks/{task_id}/jobs/:
+    get:
+      operationId: scheduler_tasks_jobs_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventizerJobListList'
+          description: ''
+  /scheduler/tasks/{task_id}/jobs/{uuid}/:
+    get:
+      operationId: scheduler_tasks_jobs_retrieve
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+        required: true
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventizerJob'
+          description: ''
+  /scheduler/tasks/{task_id}/jobs/{uuid}/logs/:
+    get:
+      operationId: scheduler_tasks_jobs_logs_retrieve
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: uuid
+        schema:
+          type: string
+        required: true
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventizerJobLogs'
+          description: ''
+  /scheduler/tasks/{uuid}/:
+    get:
+      operationId: scheduler_tasks_retrieve
+      parameters:
+      - in: path
+        name: uuid
+        schema:
+          type: string
+        required: true
+      tags:
+      - scheduler
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventizerTask'
+          description: ''
+  /token/:
+    post:
+      operationId: token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /token/refresh/:
+    post:
+      operationId: token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+components:
+  schemas:
+    Ecosystem:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z]+(?:-[a-z0-9]+)*$
+          maxLength: 32
+        title:
+          type: string
+          nullable: true
+          maxLength: 128
+        description:
+          type: string
+          nullable: true
+          maxLength: 128
+      required:
+      - name
+    EventizerJob:
+      type: object
+      properties:
+        uuid:
+          type: string
+          maxLength: 191
+        job_num:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        status:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        queue:
+          type: string
+          nullable: true
+          maxLength: 128
+        progress:
+          type: string
+          readOnly: true
+      required:
+      - job_num
+      - progress
+      - status
+      - uuid
+    EventizerJobList:
+      type: object
+      properties:
+        uuid:
+          type: string
+          maxLength: 191
+        job_num:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        status:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        queue:
+          type: string
+          nullable: true
+          maxLength: 128
+      required:
+      - job_num
+      - status
+      - uuid
+    EventizerJobLogs:
+      type: object
+      properties:
+        uuid:
+          type: string
+          maxLength: 191
+        logs:
+          type: string
+          readOnly: true
+      required:
+      - logs
+      - uuid
+    EventizerRepositoryList:
+      type: object
+      properties:
+        uri:
+          type: string
+          maxLength: 128
+        datasource_type:
+          type: string
+          maxLength: 128
+        datasource_category:
+          type: string
+          maxLength: 128
+        task:
+          $ref: '#/components/schemas/EventizerTaskList'
+      required:
+      - datasource_category
+      - datasource_type
+      - task
+      - uri
+    EventizerTask:
+      type: object
+      properties:
+        uuid:
+          type: string
+          maxLength: 191
+        status:
+          type: string
+        runs:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        failures:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        last_run:
+          type: string
+          format: date-time
+          nullable: true
+        job_interval:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        datasource_type:
+          type: string
+          maxLength: 128
+        datasource_category:
+          type: string
+          maxLength: 128
+      required:
+      - datasource_category
+      - datasource_type
+      - status
+      - uuid
+    EventizerTaskList:
+      type: object
+      properties:
+        uuid:
+          type: string
+          maxLength: 191
+        status:
+          type: string
+        runs:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        failures:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        last_run:
+          type: string
+          format: date-time
+          nullable: true
+        last_jobs:
+          type: string
+          readOnly: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+        datasource_type:
+          type: string
+          maxLength: 128
+        datasource_category:
+          type: string
+          maxLength: 128
+      required:
+      - datasource_category
+      - datasource_type
+      - last_jobs
+      - status
+      - uuid
+    PaginatedEcosystemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ecosystem'
+    PaginatedEventizerJobListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventizerJobList'
+    PaginatedEventizerRepositoryListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventizerRepositoryList'
+    PaginatedEventizerTaskListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventizerTaskList'
+    PatchedEcosystem:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: ^[a-z]+(?:-[a-z0-9]+)*$
+          maxLength: 32
+        title:
+          type: string
+          nullable: true
+          maxLength: 128
+        description:
+          type: string
+          nullable: true
+          maxLength: 128
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

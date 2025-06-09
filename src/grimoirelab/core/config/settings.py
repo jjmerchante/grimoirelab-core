@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     'grimoirelab.core.scheduler',
     'grimoirelab.core.scheduler.tasks',
     'grimoirelab.core.datasources',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -290,6 +291,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'grimoirelab.core.permissions.IsAuthenticated',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 #
@@ -366,3 +368,14 @@ GRIMOIRELAB_ARCHIVIST = {
 SESSION_COOKIE_AGE = 1800
 SESSION_COOKIE_SECURE = True
 SESSION_SAVE_EVERY_REQUEST = True
+
+#
+# drf-spectacular settings
+#
+# https://drf-spectacular.readthedocs.io/en/latest/settings.html
+#
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'GrimoireLab API',
+    'VERSION': '0.0.1'
+}
