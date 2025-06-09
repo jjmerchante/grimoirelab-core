@@ -30,4 +30,6 @@ datasources_urlpatterns = [
 ecosystems_urlpatterns = [
     path('', api.EcosystemList.as_view(), name='ecosystem-list'),
     path('<str:name>/', api.EcosystemDetail.as_view(), name='ecosystem-detail'),
+    path('<str:ecosystem_name>/projects/', api.ProjectList.as_view(), name='projects-list'),
+    path('<str:ecosystem_name>/projects/<str:name>', api.ProjectDetail.as_view(), name='projects-detail'),
 ]

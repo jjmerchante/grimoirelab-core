@@ -22,8 +22,18 @@ from rest_framework import (
     response,
     serializers,
 )
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiParameter)
+from drf_spectacular.types import OpenApiTypes
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 
-from .models import Repository, Ecosystem
+from .models import (
+    Repository,
+    Ecosystem,
+    Project)
 from ..scheduler.api import EventizerTaskListSerializer
 
 
@@ -53,6 +63,40 @@ class EventizerRepositoryListSerializer(serializers.ModelSerializer):
         fields = [
             'uri', 'datasource_type', 'datasource_category', 'task',
         ]
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    subprojects = serializers.SlugRelatedField(many=True,
+                                               read_only=True,
+                                               slug_field='name')
+
+    class Meta:
+        model = Project
+        fields = ['id', 'name', 'title', 'parent_project', 'subprojects']
+        lookup_field = 'name'
+
+    def validate_name(self, value,):
+        ecosystem = self.context['ecosystem']
+        if Project.objects.filter(ecosystem=ecosystem, name=value).count() > 0:
+            raise serializers.ValidationError(f"Ecosystem '{ecosystem.name}' already has a project named '{value}'")
+
+        return value
+
+
+class ParentProjectField(serializers.Field):
+    def to_representation(self, value):
+        return ProjectSerializer(value).data
+
+    def to_internal_value(self, data):
+        try:
+            return Project.objects.get(id=int(data))
+        except (AttributeError, KeyError):
+            pass
+
+
+class ProjectDetailSerializer(ProjectSerializer):
+    parent_project = ParentProjectField()
+    subprojects = ProjectSerializer(many=True, read_only=True)
 
 
 class RepositoryList(generics.ListAPIView):
@@ -93,3 +137,53 @@ class EcosystemList(generics.ListCreateAPIView):
     serializer_class = EcosystemSerializer
     pagination_class = DataSourcesPaginator
     model = Ecosystem
+
+
+@extend_schema_view(get=extend_schema(
+    parameters=[
+        OpenApiParameter('parent_id', OpenApiTypes.INT, OpenApiParameter.QUERY),
+        OpenApiParameter('term', OpenApiTypes.STR, OpenApiParameter.QUERY)]
+))
+class ProjectList(generics.ListCreateAPIView):
+    serializer_class = ProjectSerializer
+    pagination_class = DataSourcesPaginator
+    model = Project
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        ecosystem = get_object_or_404(Ecosystem, name=self.kwargs.get('ecosystem_name'))
+        context.update({'ecosystem': ecosystem})
+
+        return context
+
+    def get_queryset(self):
+        ecosystem_name = self.kwargs.get('ecosystem_name')
+        queryset = Project.objects.filter(ecosystem__name=ecosystem_name)
+        parent_id = self.request.query_params.get('parent_id')
+        term = self.request.query_params.get('term')
+
+        if term is not None:
+            queryset = queryset.filter(Q(name__icontains=term) |
+                                       Q(title__icontains=term))
+        if parent_id is not None:
+            queryset = queryset.filter(parent_project_id=parent_id)
+        elif not term and not parent_id:
+            queryset = queryset.filter(parent_project__isnull=True)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        ecosystem = serializer.context['ecosystem']
+        serializer.save(ecosystem=ecosystem)
+
+
+class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProjectDetailSerializer
+    model = Project
+    lookup_field = 'name'
+
+    def get_queryset(self):
+        ecosystem_name = self.kwargs.get('ecosystem_name')
+        queryset = Project.objects.filter(ecosystem__name=ecosystem_name)
+
+        return queryset
