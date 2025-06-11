@@ -19,7 +19,7 @@
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from grimoirelab.core.datasources.models import Repository
+from grimoirelab.core.datasources.models import Repository, Ecosystem
 from grimoirelab.core.scheduler.tasks.models import EventizerTask
 
 
@@ -76,3 +76,29 @@ class RepositoryModelTest(TestCase):
             task=None
         )
         self.assertIsNone(repository.task)
+
+
+class EcosystemModelTest(TestCase):
+    """Unit tests for the Ecosystem model"""
+
+    def test_create_ecosystem(self):
+        """Test creating an ecosystem"""
+        ecosystem = Ecosystem.objects.create(
+            name="example-ecosystem",
+            title="Example Ecosystem",
+            description="lorem ipsum"
+        )
+        self.assertEqual(ecosystem.name, "example-ecosystem")
+        self.assertEqual(ecosystem.title, "Example Ecosystem")
+        self.assertEqual(ecosystem.description, "lorem ipsum")
+
+    def test_unique_name(self):
+        """Test the unique contraint"""
+
+        Ecosystem.objects.create(
+            name="example-ecosystem",
+            title="Example Ecosystem",
+            description="lorem ipsum"
+        )
+        with self.assertRaises(IntegrityError):
+            Ecosystem.objects.create(name="example-ecosystem")

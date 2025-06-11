@@ -23,7 +23,7 @@ from rest_framework import (
     serializers,
 )
 
-from .models import Repository
+from .models import Repository, Ecosystem
 from ..scheduler.api import EventizerTaskListSerializer
 
 
@@ -73,3 +73,23 @@ class RepositoryList(generics.ListAPIView):
             queryset = queryset.filter(uri=uri)
 
         return queryset
+
+
+class EcosystemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ecosystem
+        fields = ['name', 'title', 'description']
+
+
+class EcosystemDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ecosystem.objects.all()
+    lookup_field = 'name'
+    serializer_class = EcosystemSerializer
+    model = Ecosystem
+
+
+class EcosystemList(generics.ListCreateAPIView):
+    queryset = Ecosystem.objects.all()
+    serializer_class = EcosystemSerializer
+    pagination_class = DataSourcesPaginator
+    model = Ecosystem
