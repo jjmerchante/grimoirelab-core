@@ -57,6 +57,199 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ecosystem'
           description: ''
+  /api/v1/ecosystems/{ecosystem_name}/projects/:
+    get:
+      operationId: api_v1_ecosystems_projects_list
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: parent_id
+        schema:
+          type: integer
+      - name: size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: term
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjectList'
+          description: ''
+    post:
+      operationId: api_v1_ecosystems_projects_create
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Project'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/v1/ecosystems/{ecosystem_name}/projects/{name}:
+    get:
+      operationId: api_v1_ecosystems_projects_retrieve
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+          description: ''
+    put:
+      operationId: api_v1_ecosystems_projects_update
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProjectDetail'
+        required: true
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+          description: ''
+    patch:
+      operationId: api_v1_ecosystems_projects_partial_update
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectDetail'
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+          description: ''
+    delete:
+      operationId: api_v1_ecosystems_projects_destroy
+      parameters:
+      - in: path
+        name: ecosystem_name
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/ecosystems/{name}/:
     get:
       operationId: api_v1_ecosystems_retrieve
@@ -767,6 +960,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EventizerTaskList'
+    PaginatedProjectList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
     PatchedEcosystem:
       type: object
       properties:
@@ -782,6 +998,79 @@ components:
           type: string
           nullable: true
           maxLength: 128
+    PatchedProjectDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          pattern: ^[a-z]+(?:-[a-z0-9]+)*$
+          maxLength: 32
+        title:
+          type: string
+          nullable: true
+          maxLength: 128
+        parent_project:
+          type: string
+        subprojects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+          readOnly: true
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          pattern: ^[a-z]+(?:-[a-z0-9]+)*$
+          maxLength: 32
+        title:
+          type: string
+          nullable: true
+          maxLength: 128
+        parent_project:
+          type: integer
+          nullable: true
+        subprojects:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - id
+      - name
+      - subprojects
+    ProjectDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          pattern: ^[a-z]+(?:-[a-z0-9]+)*$
+          maxLength: 32
+        title:
+          type: string
+          nullable: true
+          maxLength: 128
+        parent_project:
+          type: string
+        subprojects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+          readOnly: true
+      required:
+      - id
+      - name
+      - parent_project
+      - subprojects
     TokenObtainPair:
       type: object
       properties:

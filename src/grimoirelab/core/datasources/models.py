@@ -19,6 +19,7 @@
 from django.db.models import (
     CharField,
     CASCADE,
+    ForeignKey,
     OneToOneField
 )
 from django.core.validators import RegexValidator
@@ -62,3 +63,35 @@ class Ecosystem(BaseModel):
 
     class Meta:
         ordering = ['name']
+
+
+class Project(BaseModel):
+    """Model class for Project objects.
+
+    This class is meant to represent a set of data locations which
+    have to be grouped under the same entity. Moreover, this grouping
+    may have a hierarchy by defining n sub-projects.
+
+    Every project object must have a name and must belong
+    to one single Ecosystem. There cannot be two projects with
+    the same name under the same Ecosytem.
+    Optionally, it may have a title and a relation with
+    a parent project.
+
+    :param name: Name of the project
+    :param title: Title of the project
+    :param parent_project: Parent project object
+    :param ecosystem: Ecosystem which the project belongs to
+    """
+    name = CharField(max_length=MAX_SIZE_NAME_FIELD, validators=[validate_name])
+    title = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
+    parent_project = ForeignKey('project',
+                                parent_link=True,
+                                null=True,
+                                on_delete=CASCADE,
+                                related_name='subprojects')
+    ecosystem = ForeignKey('ecosystem', on_delete=CASCADE)
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ['name', 'ecosystem']

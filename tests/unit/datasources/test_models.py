@@ -19,7 +19,11 @@
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from grimoirelab.core.datasources.models import Repository, Ecosystem
+from grimoirelab.core.datasources.models import (
+    Repository,
+    Ecosystem,
+    Project
+)
 from grimoirelab.core.scheduler.tasks.models import EventizerTask
 
 
@@ -102,3 +106,60 @@ class EcosystemModelTest(TestCase):
         )
         with self.assertRaises(IntegrityError):
             Ecosystem.objects.create(name="example-ecosystem")
+
+
+class ProjectModelTest(TestCase):
+    """Unit tests for the Project model"""
+
+    def test_create_project(self):
+        """Test creating a project"""
+
+        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
+        project = Project.objects.create(
+            name="example-project",
+            title="Example Project",
+            ecosystem=ecosystem
+        )
+        self.assertEqual(project.name, "example-project")
+        self.assertEqual(project.title, "Example Project")
+        self.assertEqual(project.ecosystem, ecosystem)
+        self.assertEqual(project.parent_project, None)
+
+    def test_parent_project(self):
+        """Test creating a project with a parent project"""
+
+        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
+        parent_project = Project.objects.create(
+            name="example-project",
+            ecosystem=ecosystem
+        )
+        project = Project.objects.create(
+            name="child-project",
+            title="Example Project",
+            ecosystem=ecosystem,
+            parent_project=parent_project
+        )
+        self.assertEqual(project.name, "child-project")
+        self.assertEqual(project.title, "Example Project")
+        self.assertEqual(project.ecosystem, ecosystem)
+        self.assertEqual(project.parent_project, parent_project)
+        self.assertEqual(len(project.subprojects.all()), 0)
+
+        self.assertEqual(parent_project.name, "example-project")
+        self.assertEqual(parent_project.title, None)
+        self.assertEqual(parent_project.ecosystem, ecosystem)
+        self.assertEqual(parent_project.parent_project, None)
+        self.assertEqual(len(parent_project.subprojects.all()), 1)
+        self.assertEqual(parent_project.subprojects.get(), project)
+
+    def test_unique_together(self):
+        """Test the unique together constraint"""
+
+        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
+        Project.objects.create(
+            name="example-project",
+            title="Example Project",
+            ecosystem=ecosystem
+        )
+        with self.assertRaises(IntegrityError):
+            Project.objects.create(name="example-project", ecosystem=ecosystem)
