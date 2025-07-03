@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import uuid
 from django.db.models import (
     CharField,
     CASCADE,
@@ -31,17 +32,14 @@ from ..models import BaseModel, MAX_SIZE_CHAR_FIELD, MAX_SIZE_NAME_FIELD
 class Repository(BaseModel):
     """Base class for repositories
 
-    A repository is composed of a backend, a category, and a URI.
-    Each repository is fetched by a task. The task will be executed
-    recurrently.
+    A repository is composed of a backend and a URI.
     """
+    uuid = CharField(max_length=MAX_SIZE_CHAR_FIELD, default=uuid.uuid4, unique=True)
     uri = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     datasource_type = CharField(max_length=MAX_SIZE_CHAR_FIELD)
-    datasource_category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
-    task = OneToOneField(EventizerTask, on_delete=CASCADE, related_name="repository", null=True, default=None)
 
     class Meta:
-        unique_together = ['uri', 'datasource_type', 'datasource_category']
+        unique_together = ['uri', 'datasource_type']
 
 
 validate_name = RegexValidator(
@@ -95,3 +93,20 @@ class Project(BaseModel):
     class Meta:
         ordering = ['name']
         unique_together = ['name', 'ecosystem']
+
+
+class DataSet(BaseModel):
+    """Base class for data sets
+
+    A data set is composed of a project, a category, and a repository.
+    Each repository is fetched by a task. The task will be executed
+    recurrently.
+    """
+    project = ForeignKey(Project, on_delete=CASCADE)
+    repository = ForeignKey(Repository, on_delete=CASCADE)
+    category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
+    task = OneToOneField(EventizerTask, on_delete=CASCADE, null=True, default=None)
+
+    class Meta:
+        ordering = ['id']
+        unique_together = ['project', 'repository', 'category']

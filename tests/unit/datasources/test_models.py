@@ -22,7 +22,8 @@ from django.db.utils import IntegrityError
 from grimoirelab.core.datasources.models import (
     Repository,
     Ecosystem,
-    Project
+    Project,
+    DataSet
 )
 from grimoirelab.core.scheduler.tasks.models import EventizerTask
 
@@ -30,56 +31,32 @@ from grimoirelab.core.scheduler.tasks.models import EventizerTask
 class RepositoryModelTest(TestCase):
     """Unit tests for Repository model"""
 
-    def setUp(self):
-        self.task = EventizerTask.create_task(
-            task_args={'uri': 'uri'},
-            job_interval=86400,
-            job_max_retries=3,
-            datasource_type='git',
-            datasource_category='commit'
-        )
-
     def test_create_repository(self):
         """Test creating a repository"""
 
         repository = Repository.objects.create(
+            uuid='ABCD',
             uri="http://example.com",
-            datasource_type="type1",
-            datasource_category="category1",
-            task=self.task
+            datasource_type="type1"
         )
+        self.assertEqual(repository.uuid, "ABCD")
         self.assertEqual(repository.uri, "http://example.com")
         self.assertEqual(repository.datasource_type, "type1")
-        self.assertEqual(repository.datasource_category, "category1")
-        self.assertEqual(repository.task, self.task)
 
     def test_unique_together_constraint(self):
         """Test the unique_together constraint"""
 
         Repository.objects.create(
+            uuid="ABCD",
             uri="http://example.com",
-            datasource_type="type1",
-            datasource_category="category1",
-            task=self.task
+            datasource_type="type1"
         )
         with self.assertRaises(IntegrityError):
             Repository.objects.create(
+                uuid="EFGH",
                 uri="http://example.com",
-                datasource_type="type1",
-                datasource_category="category1",
-                task=self.task
+                datasource_type="type1"
             )
-
-    def test_repository_without_task(self):
-        """Test creating a repository without a task"""
-
-        repository = Repository.objects.create(
-            uri="http://example.com",
-            datasource_type="type1",
-            datasource_category="category1",
-            task=None
-        )
-        self.assertIsNone(repository.task)
 
 
 class EcosystemModelTest(TestCase):
@@ -163,3 +140,71 @@ class ProjectModelTest(TestCase):
         )
         with self.assertRaises(IntegrityError):
             Project.objects.create(name="example-project", ecosystem=ecosystem)
+
+
+class DataSetModelTest(TestCase):
+    """Unit tests for the DataSet model"""
+
+    def setUp(self):
+        ecosystem = Ecosystem.objects.create(
+            name="example-ecosystem",
+            title="Example Ecosystem",
+            description="lorem ipsum"
+        )
+        self.project = Project.objects.create(
+            name='example-project',
+            ecosystem=ecosystem
+        )
+        self.repository = Repository.objects.create(
+            uri='http://example.com',
+            datasource_type='type1'
+        )
+        self.task = EventizerTask.create_task(
+            task_args={'uri': 'uri'},
+            job_interval=86400,
+            job_max_retries=3,
+            datasource_type='git',
+            datasource_category='commit'
+        )
+
+    def test_create_dataset(self):
+        """Test creating a dataset"""
+
+        dataset = DataSet.objects.create(
+            project=self.project,
+            repository=self.repository,
+            category="category1",
+            task=self.task
+        )
+        self.assertEqual(dataset.repository, self.repository)
+        self.assertEqual(dataset.project, self.project)
+        self.assertEqual(dataset.category, "category1")
+        self.assertEqual(dataset.task, self.task)
+
+    def test_unique_together_constraint(self):
+        """Test the unique_together constraint"""
+
+        DataSet.objects.create(
+            project=self.project,
+            repository=self.repository,
+            category="category1",
+            task=self.task
+        )
+        with self.assertRaises(IntegrityError):
+            DataSet.objects.create(
+                project=self.project,
+                repository=self.repository,
+                category="category1",
+                task=self.task
+            )
+
+    def test_dataset_without_task(self):
+        """Test creating a dataset without a task"""
+
+        dataset = DataSet.objects.create(
+            project=self.project,
+            repository=self.repository,
+            category="category1",
+            task=None
+        )
+        self.assertIsNone(dataset.task)
