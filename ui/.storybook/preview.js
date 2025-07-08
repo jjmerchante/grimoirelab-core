@@ -1,8 +1,12 @@
 import { setup } from '@storybook/vue3';
+import { createPinia } from 'pinia'
 import vuetify from '../src/plugins/vuetify'
 import '../src/assets/main.css';
 
+const pinia = createPinia()
+
 setup((app) => {
+  app.use(pinia)
   app.use(vuetify);
 });
 

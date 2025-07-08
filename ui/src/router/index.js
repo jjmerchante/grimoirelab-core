@@ -91,6 +91,24 @@ const router = createRouter({
       ]
     },
     {
+      path: '/projects',
+      name: 'projects',
+      meta: {
+        requiresAuth: true,
+        breadcrumb: {
+          title: 'Projects',
+          to: { name: 'projects' }
+        }
+      },
+      children: [
+        {
+          path: 'ecosystem/new',
+          name: 'noEcosystem',
+          component: () => import('../views/Ecosystem/EmptyView.vue')
+        }
+      ]
+    },
+    {
       path: '/signin',
       name: 'signIn',
       component: () => import('../views/SignIn.vue')

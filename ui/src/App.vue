@@ -1,10 +1,17 @@
 <script setup>
+import { defineAsyncComponent, provide } from 'vue'
 import { RouterView } from 'vue-router'
-import { useUserStore } from '@/store'
+import { useEcosystemStore, useUserStore } from '@/store'
+import { API } from '@/services/api'
 import BreadCrumbs from './components/BreadCrumbs.vue'
+import EcosystemSelector from './components/EcosystemSelector.vue'
 import UserDropdown from './components/UserDropdown.vue'
 
-const store = useUserStore()
+const ecosystem = useEcosystemStore()
+const user = useUserStore()
+const EcosystemModal = defineAsyncComponent(() => import('./components/EcosystemModal.vue'))
+
+provide('createEcosystem', API.ecosystem.create)
 </script>
 
 <template>
@@ -12,18 +19,25 @@ const store = useUserStore()
     <v-app-bar color="primary" density="compact" flat>
       <template #prepend>
         <img src="./assets/favicon.png" height="30" />
+        <ecosystem-selector
+          v-if="user.isAuthenticated"
+          :fetch-ecosystems="API.ecosystem.list"
+          @ecosystem:selected="$router.push({ name: 'projectList' })"
+          @ecosystem:missing="$router.replace({ name: 'noEcosystem' })"
+        />
+        <ecosystem-modal v-if="ecosystem.isModalOpen" :is-open="ecosystem.isModalOpen" />
       </template>
       <v-spacer></v-spacer>
-      <user-dropdown v-if="store.isAuthenticated" :username="store.user" />
+      <user-dropdown v-if="user.isAuthenticated" :username="user.user" />
     </v-app-bar>
     <v-navigation-drawer
-      v-if="store.isAuthenticated && $route.name !== 'signIn'"
+      v-if="user.isAuthenticated && $route.name !== 'signIn'"
       class="pa-2"
       color="transparent"
       permanent
     >
       <v-list color="primary" density="compact">
-        <v-list-item :to="{ name: 'taskList' }">
+        <v-list-item :to="{ name: 'tasks' }">
           <template #prepend>
             <v-icon>mdi-calendar</v-icon>
           </template>
@@ -37,7 +51,6 @@ const store = useUserStore()
     </v-main>
   </v-app>
 </template>
-
 <style scoped lang="scss">
 :deep(.v-toolbar__prepend) {
   margin-inline: 14px auto;
