@@ -37,6 +37,12 @@ provide('createEcosystem', API.ecosystem.create)
       permanent
     >
       <v-list color="primary" density="compact">
+        <v-list-item :to="{ name: 'projects' }">
+          <template #prepend>
+            <v-icon>mdi-folder-outline</v-icon>
+          </template>
+          <v-list-item-title>Projects</v-list-item-title>
+        </v-list-item>
         <v-list-item :to="{ name: 'tasks' }">
           <template #prepend>
             <v-icon>mdi-calendar</v-icon>

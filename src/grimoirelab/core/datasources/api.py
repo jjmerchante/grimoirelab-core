@@ -364,10 +364,11 @@ class ProjectChildSerializer(serializers.ModelSerializer):
     subprojects = serializers.IntegerField(required=False)
     repos = serializers.IntegerField(required=False)
     categories = serializers.IntegerField(required=False)
+    uuid = serializers.CharField(required=False)
 
     class Meta:
         model = Project
-        fields = ['type', 'name', 'title', 'uri', 'subprojects', 'repos', 'categories']
+        fields = ['type', 'name', 'title', 'uri', 'subprojects', 'repos', 'categories', 'uuid']
 
     def to_representation(self, instance):
         representation = {
@@ -385,6 +386,7 @@ class ProjectChildSerializer(serializers.ModelSerializer):
             representation['type'] = 'repository'
             representation['uri'] = instance.uri
             representation['categories'] = instance.dataset_set.count()
+            representation['uuid'] = instance.uuid
 
         return representation
 

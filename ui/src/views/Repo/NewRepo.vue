@@ -1,8 +1,8 @@
 <template>
   <v-container>
-    <h1 class="text-h6 my-4">New task</h1>
+    <h1 class="text-h6 my-4">New repository</h1>
 
-    <form-dialog @create="createTask($event)">
+    <form-dialog @create="createRepository($event)">
       <template #activator="{ props: activatorProps }">
         <v-card
           v-bind="activatorProps"
@@ -28,12 +28,20 @@
   </v-container>
 </template>
 <script>
+import { mapState } from 'pinia'
 import { API } from '@/services/api'
+import { useEcosystemStore } from '@/store'
 import FormDialog from '@/components/FormDialog.vue'
 
 export default {
-  name: 'NewTask',
+  name: 'NewRepo',
   components: { FormDialog },
+  computed: {
+    project() {
+      return this.$route?.params?.id
+    },
+    ...mapState(useEcosystemStore, ['selectedEcosystem'])
+  },
   data() {
     return {
       snackbar: {
@@ -44,20 +52,20 @@ export default {
     }
   },
   methods: {
-    async createTask(formData) {
+    async createRepository(formData) {
       try {
-        const response = await API.scheduler.create(formData)
-        Object.assign(this.snackbar, {
-          open: true,
-          color: 'success',
-          text: response.data.message
-        })
-        this.$router.push({ name: 'taskList' })
+        const response = await API.repository.create(this.selectedEcosystem, this.project, formData)
+        if (response.status === 201) {
+          this.$router.push({
+            name: 'repository',
+            params: { id: this.project, uuid: response.data.uuid }
+          })
+        }
       } catch (error) {
         Object.assign(this.snackbar, {
           open: true,
           color: 'error',
-          text: error.response?.data?.message || error
+          text: error.response?.data || error
         })
       }
     }

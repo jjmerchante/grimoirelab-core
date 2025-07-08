@@ -17,3 +17,11 @@ a {
   font-weight: 500;
   text-decoration: none;
 }
+
+.link--underlined {
+  text-decoration: none;
+}
+
+.link--underlined:hover {
+  text-decoration: underline;
+}

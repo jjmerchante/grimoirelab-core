@@ -80,6 +80,15 @@ export default {
         this.$emit('update:model-value', event)
       }
     }
+  },
+  mounted() {
+    const setValues = [86400, 604800, 2629746]
+    if (setValues.find((value) => value == this.modelValue)) {
+      this.selected = this.modelValue
+    } else {
+      this.selected = 'custom'
+      this.custom = this.modelValue
+    }
   }
 }
 </script>

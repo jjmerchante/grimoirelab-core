@@ -29,34 +29,6 @@ const router = createRouter({
           component: () => import('../views/Task/ListView.vue')
         },
         {
-          path: 'new',
-          name: 'newTaskList',
-          meta: {
-            breadcrumb: {
-              title: 'New task',
-              to: { name: 'newTask' }
-            }
-          },
-          children: [
-            {
-              path: '',
-              name: 'newTask',
-              component: () => import('../views/Task/NewTask.vue')
-            },
-            {
-              path: 'sbom',
-              name: 'loadSbom',
-              meta: {
-                breadcrumb: {
-                  title: 'Load SBoM',
-                  to: { name: 'loadSbom' }
-                }
-              },
-              component: () => import('../views/Task/LoadSbom.vue')
-            }
-          ]
-        },
-        {
           path: ':id',
           name: 'task',
           meta: {
@@ -100,7 +72,83 @@ const router = createRouter({
           to: { name: 'projects' }
         }
       },
+      redirect: {
+        name: 'projectList'
+      },
       children: [
+        {
+          path: '',
+          name: 'projectList',
+          component: () => import('../views/Project/ListView.vue')
+        },
+        {
+          path: ':id',
+          meta: {
+            breadcrumb: {
+              to: { name: 'project' },
+              title: '',
+              param: 'id'
+            }
+          },
+          children: [
+            {
+              path: '',
+              name: 'project',
+              component: () => import('../views/Project/DetailView.vue')
+            },
+            {
+              path: 'repositories',
+              name: 'repositories',
+              redirect: {
+                name: 'newRepoList'
+              },
+              children: [
+                {
+                  path: 'new',
+                  name: 'newRepoList',
+                  meta: {
+                    breadcrumb: {
+                      title: 'New repository',
+                      to: { name: 'newRepo' }
+                    }
+                  },
+                  redirect: {
+                    name: 'newRepo'
+                  },
+                  children: [
+                    {
+                      path: '',
+                      name: 'newRepo',
+                      component: () => import('../views/Repo/NewRepo.vue')
+                    },
+                    {
+                      path: 'sbom',
+                      name: 'loadSbom',
+                      meta: {
+                        breadcrumb: {
+                          title: 'Load from SBoM',
+                          to: { name: 'loadSbom' }
+                        }
+                      },
+                      component: () => import('../views/Repo/LoadSbom.vue')
+                    }
+                  ]
+                },
+                {
+                  path: ':uuid',
+                  name: 'repository',
+                  component: () => import('../views/Repo/DetailView.vue'),
+                  meta: {
+                    breadcrumb: {
+                      to: { name: 'repository' },
+                      title: 'Repository'
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
         {
           path: 'ecosystem/new',
           name: 'noEcosystem',
@@ -112,7 +160,8 @@ const router = createRouter({
       path: '/signin',
       name: 'signIn',
       component: () => import('../views/SignIn.vue')
-    }
+    },
+    { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('../views/NotFound.vue') }
   ]
 })
 

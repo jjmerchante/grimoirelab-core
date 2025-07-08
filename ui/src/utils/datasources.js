@@ -56,17 +56,16 @@ const getTaskArgs = (datasource, category, url) => {
   if (datasource === 'git' || category === 'commit') {
     return {
       datasource_type: 'git',
-      datasource_category: category,
-      backend_args: {
-        uri: url
-      }
+      category: category,
+      uri: url
     }
   } else if (datasource === 'github') {
     const githubRegex = url.match(GITHUB_REPO_REGEX)
 
     return {
       datasource_type: 'github',
-      datasource_category: category,
+      category: category,
+      uri: url,
       backend_args: {
         owner: githubRegex[1],
         repository: githubRegex[2]

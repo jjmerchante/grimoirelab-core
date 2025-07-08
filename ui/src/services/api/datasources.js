@@ -23,9 +23,9 @@ export const repository = {
   create: (ecosystem, project, data) =>
     client.post(`/api/v1/ecosystems/${ecosystem}/projects/${project}/repos/`, data),
   get: (ecosystem, project, repo) =>
-    client.get(`/api/v1/ecosystems/${ecosystem}/projects/${project}/repos/${repo}`),
+    client.get(`/api/v1/ecosystems/${ecosystem}/projects/${project}/repos/${repo}/`),
   deleteCategory: (ecosystem, project, repo, category) =>
     client.delete(
-      `/api/v1/ecosystems/${ecosystem}/projects/${project}/repos/${repo}/categories/${category}`
+      `/api/v1/ecosystems/${ecosystem}/projects/${project}/repos/${repo}/categories/${category}/`
     )
 }

@@ -13,12 +13,12 @@
       </slot>
     </template>
 
-    <v-card title="Schedule task">
+    <v-card title="Add repository">
       <v-card-text class="mt-4">
         <v-row dense>
           <v-col cols="6">
             <v-select
-              v-model="formData.task_args.datasource_type"
+              v-model="formData.datasource_type"
               :items="['git']"
               color="primary"
               label="Backend"
@@ -28,7 +28,7 @@
           </v-col>
           <v-col cols="6">
             <v-select
-              v-model="formData.task_args.datasource_category"
+              v-model="formData.category"
               :items="['commit']"
               color="primary"
               label="Category"
@@ -40,7 +40,7 @@
         <v-row>
           <v-col cols="12">
             <v-text-field
-              v-model="formData.task_args.backend_args.uri"
+              v-model="formData.uri"
               color="primary"
               label="URI"
               hide-details
@@ -76,14 +76,9 @@ export default {
     return {
       isOpen: false,
       formData: {
-        type: 'eventizer',
-        task_args: {
-          datasource_type: 'git',
-          datasource_category: 'commit',
-          backend_args: {
-            uri: ''
-          }
-        },
+        uri: '',
+        datasource_type: 'git',
+        category: 'commit',
         scheduler: {
           job_interval: '604800',
           job_max_retries: 1
