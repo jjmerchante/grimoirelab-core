@@ -1,6 +1,17 @@
 <template>
   <v-container v-if="repo">
-    <h1 class="text-h5 mt-4 mb-4">Repository</h1>
+    <div class="d-flex align-center">
+      <h1 class="text-h5 mt-4 mb-4">Repository</h1>
+      <v-spacer />
+      <v-btn
+        variant="outlined"
+        class="text-subtitle-2 border"
+        prepend-icon="mdi-delete"
+        @click="confirmDelete(deleteRepo, 'repository')"
+      >
+        Delete
+      </v-btn>
+    </div>
     <h2 class="text-h6 mb-4">Details</h2>
     <v-list class="border rounded">
       <v-list-item>
@@ -27,7 +38,10 @@
         <v-list-item-title class="d-flex align-center mb-1">
           <span class="text-subtitle-2">{{ category.name || key }}</span>
         </v-list-item-title>
-        <v-list-item-subtitle v-if="category.active && category.task.last_run" class="d-flex align-center">
+        <v-list-item-subtitle
+          v-if="category.active && category.task.last_run"
+          class="d-flex align-center"
+        >
           <router-link
             :to="{ name: 'taskJobs', params: { id: category.task?.uuid } }"
             class="link--underlined d-flex font-weight-regular"
@@ -43,15 +57,15 @@
             {{ category.task.status }}
           </v-chip>
         </v-list-item-subtitle>
-        <template v-slot:append>
+        <template #append>
           <v-list-item-action class="flex-column align-end">
             <v-switch
-            :model-value="category.active"
-            color="primary"
-            hide-details
-            class="mr-4"
-            @update:model-value="($event) => toggleCategory($event, category)"
-          />
+              :model-value="category.active"
+              color="primary"
+              hide-details
+              class="mr-4"
+              @update:model-value="($event) => toggleCategory($event, category)"
+            />
           </v-list-item-action>
         </template>
       </v-list-item>
@@ -59,6 +73,7 @@
     <v-snackbar v-model="snackbar.open" :color="snackbar.color">
       {{ snackbar.text }}
     </v-snackbar>
+    <confirm-modal v-model:is-open="modalProps.isOpen" v-bind="modalProps" />
   </v-container>
 </template>
 <script>
@@ -66,10 +81,11 @@ import { mapState } from 'pinia'
 import { API } from '@/services/api'
 import { useEcosystemStore } from '@/store'
 import { formatDate } from '@/utils/dates'
-import StatusIcon from '@/components/StatusIcon.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+import useModal from '@/composables/useModal'
 
 export default {
-  components: { StatusIcon },
+  components: { ConfirmModal },
   computed: {
     project() {
       return this.$route.params?.id
@@ -174,10 +190,23 @@ export default {
         })
       }
     },
+    async deleteRepo() {
+      try {
+        await API.repository.delete(this.selectedEcosystem, this.project, this.uuid)
+        this.$router.replace({ name: 'project', params: { id: this.project } })
+      } catch (error) {
+        const message = error.response?.data.detail ? error.response.data.detail : error.toString()
+        Object.assign(alert.value, { isOpen: true, text: message })
+      }
+    },
     formatDate
   },
   mounted() {
     this.fetchRepo()
+  },
+  setup() {
+    const { modalProps, confirmDelete } = useModal()
+    return { modalProps, confirmDelete }
   }
 }
 </script>

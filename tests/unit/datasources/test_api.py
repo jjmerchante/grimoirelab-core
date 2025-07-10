@@ -1021,6 +1021,18 @@ class RepoDetailApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data['detail'], 'No Repository matches the given query.')
 
+    def test_delete_repo(self):
+        """Test that it deletes a repository"""
+
+        url = reverse('repo-detail', kwargs={'ecosystem_name': self.ecosystem.name,
+                                             'project_name': self.project.name,
+                                             'uuid': self.repository.uuid})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        with self.assertRaises(ObjectDoesNotExist):
+            Repository.objects.get(uuid=self.repository.uuid)
+
     def test_unauthenticated_request(self):
         """Test that it returns an error if no credentials were provided"""
 
