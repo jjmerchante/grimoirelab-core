@@ -5,14 +5,6 @@
       <v-chip class="ml-2" density="comfortable">
         {{ count }}
       </v-chip>
-      <v-btn
-        :to="{ name: 'newTask' }"
-        class="ml-auto"
-        color="secondary"
-        prepend-icon="mdi-plus"
-        text="Add"
-        variant="flat"
-      ></v-btn>
     </h1>
     <div class="d-flex">
       <v-tabs

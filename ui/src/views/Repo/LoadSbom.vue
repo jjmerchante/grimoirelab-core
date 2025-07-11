@@ -66,6 +66,8 @@
 </template>
 <script>
 import { API } from '@/services/api'
+import { mapState } from 'pinia'
+import { useEcosystemStore } from '@/store'
 import { guessDatasource, getTaskArgs } from '@/utils/datasources'
 import IntervalSelector from '@/components/IntervalSelector.vue'
 import RepositoryTable from '@/components/RepositoryTable.vue'
@@ -93,26 +95,32 @@ export default {
       }
     }
   },
+  computed: {
+    project() {
+      return this.$route?.params?.id
+    },
+    ...mapState(useEcosystemStore, ['selectedEcosystem'])
+  },
   methods: {
     async parseJSONFile(JSONFile) {
       const fileText = await new Response(JSONFile).text()
       return JSON.parse(fileText)
     },
-    async loadFile(files) {
-      if (!files[0]) return
+    async loadFile(file) {
+      if (!file) return
       this.loading = true
 
       const urls = []
 
       try {
-        await this.validateSPDX(files[0])
+        await this.validateSPDX(file)
       } catch (error) {
         this.form.error = error.message
         this.loading = false
         return
       }
 
-      const parsedFile = await this.parseJSONFile(files[0])
+      const parsedFile = await this.parseJSONFile(file)
 
       if (parsedFile.packages) {
         for (const item of parsedFile.packages) {
@@ -141,16 +149,22 @@ export default {
 
       try {
         await Promise.all(
-          this.form.selected.map((task) =>
-            API.scheduler.create({
-              type: 'eventizer',
-              task_args: getTaskArgs(task.datasource, task.category, task.url),
+          this.form.selected.map((task) => {
+            const { datasource_type, category, uri } = getTaskArgs(
+              task.datasource,
+              task.category,
+              task.url
+            )
+            API.repository.create(this.selectedEcosystem, this.project, {
+              datasource_type,
+              category,
+              uri,
               scheduler: {
                 job_interval: this.form.interval,
                 job_max_retries: 3
               }
             })
-          )
+          })
         )
         this.$router.push({ name: 'tasks' })
       } catch (error) {

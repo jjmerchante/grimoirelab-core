@@ -300,7 +300,7 @@ class RepoList(generics.ListCreateAPIView):
         return response.Response(serializer.errors, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
-class RepoDetail(generics.RetrieveAPIView):
+class RepoDetail(generics.RetrieveDestroyAPIView):
     serializer_class = RepoDetailSerializer
     model = Repository
     lookup_field = 'uuid'
@@ -312,6 +312,23 @@ class RepoDetail(generics.RetrieveAPIView):
         queryset = Repository.objects.filter(dataset__project=project).distinct()
 
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        project = get_object_or_404(Project,
+                                    name=self.kwargs.get('project_name'),
+                                    ecosystem__name=self.kwargs.get('ecosystem_name'))
+        repo = get_object_or_404(Repository, uuid=self.kwargs.get('uuid'))
+        datasets = DataSet.objects.filter(project=project, repository=repo)
+
+        # Cancel all related tasks
+        for dataset in datasets:
+            if dataset.task:
+                cancel_task(dataset.task.uuid)
+
+        # Delete repository
+        repo.delete()
+
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CategoryDetail(generics.RetrieveDestroyAPIView):
@@ -364,10 +381,11 @@ class ProjectChildSerializer(serializers.ModelSerializer):
     subprojects = serializers.IntegerField(required=False)
     repos = serializers.IntegerField(required=False)
     categories = serializers.IntegerField(required=False)
+    uuid = serializers.CharField(required=False)
 
     class Meta:
         model = Project
-        fields = ['type', 'name', 'title', 'uri', 'subprojects', 'repos', 'categories']
+        fields = ['type', 'name', 'title', 'uri', 'subprojects', 'repos', 'categories', 'uuid']
 
     def to_representation(self, instance):
         representation = {
@@ -385,6 +403,7 @@ class ProjectChildSerializer(serializers.ModelSerializer):
             representation['type'] = 'repository'
             representation['uri'] = instance.uri
             representation['categories'] = instance.dataset_set.count()
+            representation['uuid'] = instance.uuid
 
         return representation
 
