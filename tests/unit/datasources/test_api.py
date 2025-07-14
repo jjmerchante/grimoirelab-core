@@ -374,7 +374,7 @@ class ProjectListApiTest(APITestCase):
         """Test that it returns a list of projects filtered by parent_id"""
 
         ecosystem = Ecosystem.objects.create(name="ecosystem1", title="Ecosystem 1")
-        project1 = Project.objects.create(name="project1", title="Project 1", ecosystem=ecosystem)
+        Project.objects.create(name="project1", title="Project 1", ecosystem=ecosystem)
         project2 = Project.objects.create(name="project2", title="Project 2", ecosystem=ecosystem)
         project3 = Project.objects.create(
             name="project3", title="Project 3", parent_project=project2, ecosystem=ecosystem
@@ -438,10 +438,10 @@ class ProjectListApiTest(APITestCase):
         """Test that it returns a paginated list of projects"""
 
         ecosystem = Ecosystem.objects.create(name="ecosystem1", title="Ecosystem 1")
-        project1 = Project.objects.create(name="project1", title="Project 1", ecosystem=ecosystem)
+        Project.objects.create(name="project1", title="Project 1", ecosystem=ecosystem)
         project2 = Project.objects.create(name="project2", title="Project 2", ecosystem=ecosystem)
-        project3 = Project.objects.create(name="project3", title="Project 3", ecosystem=ecosystem)
-        project4 = Project.objects.create(name="project4", title="Project 4", ecosystem=ecosystem)
+        Project.objects.create(name="project3", title="Project 3", ecosystem=ecosystem)
+        Project.objects.create(name="project4", title="Project 4", ecosystem=ecosystem)
 
         url = reverse("projects-list", kwargs={"ecosystem_name": "ecosystem1"})
         response = self.client.get(url, {"page": 2, "size": 1})

@@ -476,7 +476,7 @@ class TestCancelTask(GrimoireLabTestCase):
             "b": 2,
         }
         task1 = schedule_task("callback_test_task", task_args)
-        task2 = schedule_task("callback_test_task", task_args)
+        schedule_task("callback_test_task", task_args)
 
         # Run the job
         worker = django_rq.workers.get_worker("testing")
@@ -606,7 +606,7 @@ class TestRescheduleTask(GrimoireLabTestCase):
         first_schedule_time = datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)
 
         task = SchedulerTestTask.create_task(task_args, 360, 10)
-        job_db = _enqueue_task(task, scheduled_at=first_schedule_time)
+        _enqueue_task(task, scheduled_at=first_schedule_time)
 
         # Check initial state of the task
         self.assertEqual(task.task_id, f"grimoire:task:{task.uuid}")

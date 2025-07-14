@@ -212,7 +212,7 @@ class ConsumerPool:
         for consumer in self._consumers.values():
             try:
                 consumer.process.kill()
-            except OSError as e:
+            except OSError:
                 pass
 
     def _request_stop(self, signum, frame):
