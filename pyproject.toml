@@ -71,6 +71,7 @@ httpretty = "^1.1.4"
 pytest-django = "^4.11.1"
 testcontainers = "^4.10.0"
 ruff = "^0.12.3"
+pre-commit = "^4.2.0"
 
 [tool.poetry.build]
 script = "scripts/build-ui.py"
