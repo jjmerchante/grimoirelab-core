@@ -50,9 +50,12 @@ jobs:
         DB_PORT: ${{ job.services.mysql.ports[3306] }}
       run: |
         mysql --host $DB_HOST --port $DB_PORT -uroot -proot -e "SET GLOBAL sql_mode = 'NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
-    - name: Lint with flake8
+    - name: Lint files
       run: |
-        poetry run flake8
+        poetry run ruff check --output-format=github
+    - name : Check format
+      run: |
+        poetry run ruff format --diff
     - name: Tests
       run: |
         poetry run pytest -s
