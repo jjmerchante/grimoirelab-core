@@ -32,11 +32,14 @@ if typing.TYPE_CHECKING:
 
 
 @click.group()
-@click.option('--config', 'cfg',
-              envvar='GRIMOIRELAB_CONFIG',
-              default='grimoirelab.core.config.settings',
-              show_default=True,
-              help="Configuration module in Python path syntax")
+@click.option(
+    "--config",
+    "cfg",
+    envvar="GRIMOIRELAB_CONFIG",
+    default="grimoirelab.core.config.settings",
+    show_default=True,
+    help="Configuration module in Python path syntax",
+)
 @click.pass_context
 def grimoirelab(ctx: Context, cfg: str):
     """Toolset for software development analytics.
@@ -55,7 +58,7 @@ def grimoirelab(ctx: Context, cfg: str):
     env = os.environ
 
     if cfg:
-        env['DJANGO_SETTINGS_MODULE'] = cfg
+        env["DJANGO_SETTINGS_MODULE"] = cfg
         ctx.ensure_object(dict)
         ctx.obj["cfg"] = cfg
     else:

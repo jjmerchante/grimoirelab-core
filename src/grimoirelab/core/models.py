@@ -22,7 +22,7 @@ import typing
 
 from django.db.models import (
     DateTimeField,
-    Model
+    Model,
 )
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
@@ -43,8 +43,8 @@ class CreationDateTimeField(DateTimeField):
     """Field automatically set to the current date when an object is created."""
 
     def __init__(self, *args, **kwargs) -> None:
-        kwargs.setdefault('editable', False)
-        kwargs.setdefault('default', datetime_utcnow)
+        kwargs.setdefault("editable", False)
+        kwargs.setdefault("default", datetime_utcnow)
         super().__init__(*args, **kwargs)
 
 
@@ -52,8 +52,8 @@ class LastModificationDateTimeField(DateTimeField):
     """Field automatically set to the current date on each save() call."""
 
     def __init__(self, *args, **kwargs) -> None:
-        kwargs.setdefault('editable', False)
-        kwargs.setdefault('default', datetime_utcnow)
+        kwargs.setdefault("editable", False)
+        kwargs.setdefault("default", datetime_utcnow)
         super().__init__(*args, **kwargs)
 
     def pre_save(self, model_instance: Model, add: bool) -> datetime.datetime:
@@ -71,6 +71,7 @@ class BaseModel(Model):
     The fields `created_at` and `last_modified` are automatically
     set to the current date when the object is created or updated.
     """
+
     created_at = CreationDateTimeField()
     last_modified = LastModificationDateTimeField()
 

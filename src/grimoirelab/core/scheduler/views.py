@@ -23,11 +23,11 @@ from django.conf import settings
 from .scheduler import (
     cancel_task as scheduler_cancel_task,
     schedule_task,
-    reschedule_task as scheduler_reschedule_task
+    reschedule_task as scheduler_reschedule_task,
 )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def add_task(request):
     """Create a Task to fetch items
 
@@ -49,33 +49,34 @@ def add_task(request):
     """
     data = request.data
 
-    task_type = data['type']
+    task_type = data["type"]
 
     job_interval = settings.GRIMOIRELAB_JOB_INTERVAL
     job_max_retries = settings.GRIMOIRELAB_JOB_MAX_RETRIES
 
-    if 'scheduler' in data:
-        job_interval = data['scheduler'].get('job_interval', job_interval)
-        job_max_retries = data['scheduler'].get('job_max_retries', job_max_retries)
+    if "scheduler" in data:
+        job_interval = data["scheduler"].get("job_interval", job_interval)
+        job_max_retries = data["scheduler"].get("job_max_retries", job_max_retries)
 
-    task_args = data['task_args']['backend_args']
+    task_args = data["task_args"]["backend_args"]
 
     task = schedule_task(
-        task_type, task_args,
-        datasource_type=data['task_args']['datasource_type'],
-        datasource_category=data['task_args']['datasource_category'],
+        task_type,
+        task_args,
+        datasource_type=data["task_args"]["datasource_type"],
+        datasource_category=data["task_args"]["datasource_category"],
         job_interval=job_interval,
-        job_max_retries=job_max_retries
+        job_max_retries=job_max_retries,
     )
 
     response = {
-        'status': 'ok',
-        'message': f"Task {task.id} added correctly"
+        "status": "ok",
+        "message": f"Task {task.id} added correctly",
     }
     return Response(response, status=200)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def reschedule_task(request):
     """Reschedule a Task
 
@@ -85,18 +86,18 @@ def reschedule_task(request):
     }
     """
     data = request.data
-    task_id = data['taskId']
+    task_id = data["taskId"]
 
     scheduler_reschedule_task(task_id)
 
     response = {
-        'status': 'ok',
-        'message': f"Task {task_id} rescheduled correctly"
+        "status": "ok",
+        "message": f"Task {task_id} rescheduled correctly",
     }
     return Response(response, status=200)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def cancel_task(request):
     """Cancel a Task
 
@@ -106,12 +107,12 @@ def cancel_task(request):
     }
     """
     data = request.data
-    task_id = data['taskId']
+    task_id = data["taskId"]
 
     scheduler_cancel_task(task_id)
 
     response = {
-        'status': 'ok',
-        'message': f"Task {task_id} canceled correctly"
+        "status": "ok",
+        "message": f"Task {task_id} canceled correctly",
     }
     return Response(response, status=200)

@@ -22,14 +22,32 @@ from . import api
 
 
 ecosystems_urlpatterns = [
-    path('', api.EcosystemList.as_view(), name='ecosystem-list'),
-    path('<str:name>/', api.EcosystemDetail.as_view(), name='ecosystem-detail'),
-    path('<str:ecosystem_name>/projects/', api.ProjectList.as_view(), name='projects-list'),
-    path('<str:ecosystem_name>/projects/<str:name>', api.ProjectDetail.as_view(), name='projects-detail'),
-    path('<str:ecosystem_name>/projects/<str:project_name>/children/', api.ProjectChildrenList.as_view(), name='children-list'),
-    path('<str:ecosystem_name>/projects/<str:project_name>/repos/', api.RepoList.as_view(), name='repo-list'),
-    path('<str:ecosystem_name>/projects/<str:project_name>/repos/<str:uuid>/', api.RepoDetail.as_view(), name='repo-detail'),
-    path('<str:ecosystem_name>/projects/<str:project_name>/repos/<str:uuid>/categories/<str:category>/',
-         api.CategoryDetail.as_view(),
-         name='category-detail'),
+    path("", api.EcosystemList.as_view(), name="ecosystem-list"),
+    path("<str:name>/", api.EcosystemDetail.as_view(), name="ecosystem-detail"),
+    path("<str:ecosystem_name>/projects/", api.ProjectList.as_view(), name="projects-list"),
+    path(
+        "<str:ecosystem_name>/projects/<str:name>",
+        api.ProjectDetail.as_view(),
+        name="projects-detail",
+    ),
+    path(
+        "<str:ecosystem_name>/projects/<str:project_name>/children/",
+        api.ProjectChildrenList.as_view(),
+        name="children-list",
+    ),
+    path(
+        "<str:ecosystem_name>/projects/<str:project_name>/repos/",
+        api.RepoList.as_view(),
+        name="repo-list",
+    ),
+    path(
+        "<str:ecosystem_name>/projects/<str:project_name>/repos/<str:uuid>/",
+        api.RepoDetail.as_view(),
+        name="repo-detail",
+    ),
+    path(
+        "<str:ecosystem_name>/projects/<str:project_name>/repos/<str:uuid>/categories/<str:category>/",
+        api.CategoryDetail.as_view(),
+        name="category-detail",
+    ),
 ]

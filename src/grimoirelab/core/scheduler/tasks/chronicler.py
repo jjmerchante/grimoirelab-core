@@ -37,7 +37,7 @@ if typing.TYPE_CHECKING:
     from datetime import datetime
 
 
-logger = logging.getLogger('chronicler')
+logger = logging.getLogger("chronicler")
 
 
 def chronicler_job(
@@ -45,7 +45,7 @@ def chronicler_job(
     datasource_category: str,
     events_stream: str,
     stream_max_length: int,
-    job_args: dict[str, Any] = None
+    job_args: dict[str, Any] = None,
 ) -> ChroniclerProgress:
     """Fetch and eventize data.
 
@@ -79,30 +79,21 @@ def chronicler_job(
 
     # Get the generator to fetch the data items
     perceval_gen = perceval.backend.BackendItemsGenerator(
-        backend_class,
-        backend_args,
-        datasource_category
+        backend_class, backend_args, datasource_category
     )
-    progress = ChroniclerProgress(
-        rq_job.get_id(),
-        datasource_type,
-        datasource_category,
-        None
-    )
+    progress = ChroniclerProgress(rq_job.get_id(), datasource_type, datasource_category, None)
     rq_job.progress = progress
 
     # The chronicler generator will eventize the data items
     # that are fetched by the perceval generator.
     try:
-        events = chronicler.eventizer.eventize(datasource_type,
-                                               perceval_gen.items)
+        events = chronicler.eventizer.eventize(datasource_type, perceval_gen.items)
         for event in events:
             data = cloudevents.conversion.to_json(event)
             message = {
-                'data': data
+                "data": data,
             }
-            rq_job.connection.xadd(events_stream, message,
-                                   maxlen=stream_max_length)
+            rq_job.connection.xadd(events_stream, message, maxlen=stream_max_length)
     finally:
         progress.summary = perceval_gen.summary
 
@@ -120,8 +111,14 @@ class ChroniclerProgress:
     :param backend: backend used to fetch the items
     :param category: category of the fetched items
     """
-    def __init__(self, job_id: str, backend: str, category: str,
-                 summary: perceval.backend.Summary | None = None) -> None:
+
+    def __init__(
+        self,
+        job_id: str,
+        backend: str,
+        category: str,
+        summary: perceval.backend.Summary | None = None,
+    ) -> None:
         self.job_id = job_id
         self.backend = backend
         self.category = category
@@ -134,29 +131,24 @@ class ChroniclerProgress:
         def convert_to_datetime(dt: str) -> datetime | None:
             return str_to_datetime(dt) if dt else None
 
-        data_summary = data['summary']
+        data_summary = data["summary"]
 
         if data_summary:
             summary = perceval.backend.Summary()
-            summary.fetched = data_summary['fetched']
-            summary.skipped = data_summary['skipped']
-            summary.min_updated_on = convert_to_datetime(data_summary['min_updated_on'])
-            summary.max_updated_on = convert_to_datetime(data_summary['max_updated_on'])
-            summary.last_updated_on = convert_to_datetime(data_summary['last_updated_on'])
-            summary.last_uuid = data_summary['last_uuid']
-            summary.min_offset = data_summary['min_offset']
-            summary.max_offset = data_summary['max_offset']
-            summary.last_offset = data_summary['last_offset']
-            summary.extras = data_summary['extras']
+            summary.fetched = data_summary["fetched"]
+            summary.skipped = data_summary["skipped"]
+            summary.min_updated_on = convert_to_datetime(data_summary["min_updated_on"])
+            summary.max_updated_on = convert_to_datetime(data_summary["max_updated_on"])
+            summary.last_updated_on = convert_to_datetime(data_summary["last_updated_on"])
+            summary.last_uuid = data_summary["last_uuid"]
+            summary.min_offset = data_summary["min_offset"]
+            summary.max_offset = data_summary["max_offset"]
+            summary.last_offset = data_summary["last_offset"]
+            summary.extras = data_summary["extras"]
         else:
             summary = None
 
-        return cls(
-            data['job_id'],
-            data['backend'],
-            data['category'],
-            summary=summary
-        )
+        return cls(data["job_id"], data["backend"], data["category"], summary=summary)
 
     def to_dict(self) -> dict[str, str | int]:
         """Convert object to a dict."""
@@ -164,34 +156,34 @@ class ChroniclerProgress:
         summary = {}
 
         if self.summary:
-            summary['fetched'] = self.summary.fetched
-            summary['skipped'] = self.summary.skipped
-            summary['last_uuid'] = self.summary.last_uuid
-            summary['min_offset'] = self.summary.min_offset
-            summary['max_offset'] = self.summary.max_offset
-            summary['last_offset'] = self.summary.last_offset
-            summary['extras'] = self.summary.extras
+            summary["fetched"] = self.summary.fetched
+            summary["skipped"] = self.summary.skipped
+            summary["last_uuid"] = self.summary.last_uuid
+            summary["min_offset"] = self.summary.min_offset
+            summary["max_offset"] = self.summary.max_offset
+            summary["last_offset"] = self.summary.last_offset
+            summary["extras"] = self.summary.extras
 
             if self.summary.min_updated_on:
-                summary['min_updated_on'] = self.summary.min_updated_on.timestamp()
+                summary["min_updated_on"] = self.summary.min_updated_on.timestamp()
             else:
-                summary['min_updated_on'] = None
+                summary["min_updated_on"] = None
 
             if self.summary.max_updated_on:
-                summary['max_updated_on'] = self.summary.max_updated_on.timestamp()
+                summary["max_updated_on"] = self.summary.max_updated_on.timestamp()
             else:
-                summary['max_updated_on'] = None
+                summary["max_updated_on"] = None
 
             if self.summary.last_updated_on:
-                summary['last_updated_on'] = self.summary.last_updated_on.timestamp()
+                summary["last_updated_on"] = self.summary.last_updated_on.timestamp()
             else:
-                summary['last_updated_on'] = None
+                summary["last_updated_on"] = None
 
         result = {
-            'job_id': self.job_id,
-            'backend': self.backend,
-            'category': self.category,
-            'summary': summary
+            "job_id": self.job_id,
+            "backend": self.backend,
+            "category": self.category,
+            "summary": summary,
         }
 
         return result
@@ -205,6 +197,7 @@ class ChroniclerArgumentGenerator:
     parameters that need to be updated after chronicler run, or parameters
     for the recovery mode then the run failed.
     """
+
     @staticmethod
     def initial_args(task_args: dict[str, Any]) -> dict[str, Any]:
         """Generate the common parameters for an initial run."""
@@ -221,10 +214,10 @@ class ChroniclerArgumentGenerator:
         params = {}
 
         if progress.summary and progress.summary.fetched > 0:
-            params['from_date'] = progress.summary.max_updated_on
+            params["from_date"] = progress.summary.max_updated_on
 
             if progress.summary.max_offset:
-                params['offset'] = progress.summary.max_offset
+                params["offset"] = progress.summary.max_offset
 
         return params
 
@@ -235,17 +228,15 @@ class ChroniclerArgumentGenerator:
     ) -> dict[str, Any]:
         """Generate the common parameters for a recovery run."""
 
-        return ChroniclerArgumentGenerator.resuming_args(
-            task_args, progress
-        )
+        return ChroniclerArgumentGenerator.resuming_args(task_args, progress)
 
 
 def get_chronicler_argument_generator(name: str) -> ChroniclerArgumentGenerator:
     """Get the argument generator for a backend."""
 
     generators = {
-        'git': GitArgumentGenerator,
-        'github': GitHubArgumentGenerator
+        "git": GitArgumentGenerator,
+        "github": GitHubArgumentGenerator,
     }
     return generators.get(name.lower(), ChroniclerArgumentGenerator)
 
@@ -262,14 +253,15 @@ class GitArgumentGenerator(ChroniclerArgumentGenerator):
 
         # For the first run, make some arguments mandatory
         base_path = os.path.expanduser(settings.GRIMOIRELAB_GIT_STORAGE_PATH)
-        uri = task_args['uri']
-        processed_uri = uri.lstrip('/')
-        git_path = os.path.join(base_path, processed_uri) + '-git'
+        uri = task_args["uri"]
+        processed_uri = uri.lstrip("/")
+        git_path = os.path.join(base_path, processed_uri) + "-git"
 
-        job_args = {}
-        job_args['latest_items'] = False
-        job_args['gitpath'] = git_path
-        job_args['uri'] = uri
+        job_args = {
+            "latest_items": False,
+            "gitpath": git_path,
+            "uri": uri,
+        }
 
         return job_args
 
@@ -281,10 +273,10 @@ class GitArgumentGenerator(ChroniclerArgumentGenerator):
         """Git resuming arguments."""
 
         job_args = task_args.copy() if task_args else {}
-        job_args['latest_items'] = True
+        job_args["latest_items"] = True
 
-        if 'recovery_commit' in job_args:
-            del job_args['recovery_commit']
+        if "recovery_commit" in job_args:
+            del job_args["recovery_commit"]
 
         return job_args
 
@@ -298,15 +290,15 @@ class GitArgumentGenerator(ChroniclerArgumentGenerator):
         job_args = task_args.copy() if task_args else {}
 
         if progress.summary and progress.summary.last_offset:
-            job_args['recovery_commit'] = progress.summary.last_offset
-            job_args['latest_items'] = False
+            job_args["recovery_commit"] = progress.summary.last_offset
+            job_args["latest_items"] = False
         elif progress.summary:
-            job_args['latest_items'] = True
+            job_args["latest_items"] = True
         else:
             # Something went wrong on the side of the worker.
             # The only thing we can do is to start over,
             # without retrieving the latest items.
-            job_args['latest_items'] = False
+            job_args["latest_items"] = False
 
         return job_args
 
@@ -320,16 +312,16 @@ class GitHubArgumentGenerator(ChroniclerArgumentGenerator):
 
         # For the first execution make some arguments mandatory
         job_args = {}
-        job_args['owner'] = task_args['owner']
-        job_args['repository'] = task_args['repository']
+        job_args["owner"] = task_args["owner"]
+        job_args["repository"] = task_args["repository"]
 
-        tokens = task_args.get('api_token', [])
+        tokens = task_args.get("api_token", [])
 
         if not isinstance(tokens, list):
             tokens = [tokens]
 
-        job_args['api_token'] = tokens
-        job_args['sleep_for_rate'] = True
+        job_args["api_token"] = tokens
+        job_args["sleep_for_rate"] = True
 
     @staticmethod
     def resuming_args(
@@ -339,8 +331,8 @@ class GitHubArgumentGenerator(ChroniclerArgumentGenerator):
         """GitHub resuming arguments."""
 
         job_args = task_args.copy() if task_args else {}
-        job_args['sleep_for_rate'] = True
-        job_args['from_date'] = progress.summary.last_updated_on
+        job_args["sleep_for_rate"] = True
+        job_args["from_date"] = progress.summary.last_updated_on
 
         return job_args
 
@@ -354,7 +346,7 @@ class GitHubArgumentGenerator(ChroniclerArgumentGenerator):
         job_args = task_args.copy() if task_args else {}
 
         if progress.summary and progress.summary.last_updated_on:
-            job_args['from_date'] = progress.summary.last_updated_on
+            job_args["from_date"] = progress.summary.last_updated_on
 
         return job_args
 

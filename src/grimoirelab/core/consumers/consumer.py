@@ -81,7 +81,9 @@ class Consumer:
         from the stream blocking for 'stream_block_timeout' if there aren't
         new entries.
         """
-        self.logger.info(f"Starting consumer '{self.consumer_name}' for '{self.stream_name}:{self.consumer_group}'")
+        self.logger.info(
+            f"Starting consumer '{self.consumer_name}' for '{self.stream_name}:{self.consumer_group}'"
+        )
 
         self._create_consumer_group()
 
@@ -139,7 +141,9 @@ class Consumer:
                     block_time = 1000
 
                 else:
-                    self.logger.debug(f"No new messages for '{self.stream_name}:{self.consumer_group}'.")
+                    self.logger.debug(
+                        f"No new messages for '{self.stream_name}:{self.consumer_group}'."
+                    )
                     break
 
                 if self._stop_event.is_set():

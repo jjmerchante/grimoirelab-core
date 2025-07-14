@@ -50,10 +50,13 @@ def run(ctx: Context):
     pass
 
 
-@click.option("--dev", "devel",
-              is_flag=True,
-              default=False,
-              help="Run the service in developer mode.")
+@click.option(
+    "--dev",
+    "devel",
+    is_flag=True,
+    default=False,
+    help="Run the service in developer mode.",
+)
 @run.command()
 @click.pass_context
 def server(ctx: Context, devel: bool):
@@ -102,10 +105,12 @@ def server(ctx: Context, devel: bool):
 
 
 @run.command()
-@click.option('--workers',
-              default=5,
-              show_default=True,
-              help="Number of workers to run in the pool.")
+@click.option(
+    "--workers",
+    default=5,
+    show_default=True,
+    help="Number of workers to run in the pool.",
+)
 def eventizers(workers: int):
     """Start a pool of eventizer workers.
 
@@ -120,15 +125,14 @@ def eventizers(workers: int):
     in the configuration file.
     """
     django.core.management.call_command(
-        'rqworker-pool', settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
-        num_workers=workers
+        "rqworker-pool", settings.GRIMOIRELAB_Q_EVENTIZER_JOBS, num_workers=workers
     )
 
 
 def _sleep_backoff(attempt: int) -> None:
     """Sleep with exponential backoff"""
 
-    backoff = min(DEFAULT_BACKOFF_MAX, 2 ** attempt)
+    backoff = min(DEFAULT_BACKOFF_MAX, 2**attempt)
     time.sleep(backoff)
 
 
@@ -169,7 +173,9 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
             logging.error("Authorization failed. Check your credentials.")
             exit(1)
         except opensearchpy.exceptions.ConnectionError:
-            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready.")
+            logging.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready."
+            )
             _sleep_backoff(attempt)
 
     else:
@@ -190,7 +196,9 @@ def _wait_redis_ready():
             redis_conn.ping()
             break
         except redis.exceptions.ConnectionError as e:
-            logging.warning(f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Redis connection not ready: {e}")
+            logging.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Redis connection not ready: {e}"
+            )
             _sleep_backoff(attempt)
     else:
         logging.error("Failed to connect to Redis server")
@@ -200,18 +208,24 @@ def _wait_redis_ready():
 
 
 @run.command()
-@click.option('--workers',
-              default=20,
-              show_default=True,
-              help="Number of archivists to run.")
-@click.option("--verbose",
-              is_flag=True,
-              default=False,
-              help="Enable verbose mode.")
-@click.option("--burst",
-              is_flag=True,
-              default=False,
-              help="Process all the events and exit.")
+@click.option(
+    "--workers",
+    default=20,
+    show_default=True,
+    help="Number of archivists to run.",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable verbose mode.",
+)
+@click.option(
+    "--burst",
+    is_flag=True,
+    default=False,
+    help="Process all the events and exit.",
+)
 def archivists(workers: int, verbose: bool, burst: bool):
     """Start a pool of archivists.
 
@@ -226,11 +240,13 @@ def archivists(workers: int, verbose: bool, burst: bool):
     """
     from grimoirelab.core.consumers.archivist import OpenSearchArchivistPool
 
-    _wait_opensearch_ready(settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
-                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME'],
-                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD'],
-                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX'],
-                           settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'])
+    _wait_opensearch_ready(
+        settings.GRIMOIRELAB_ARCHIVIST["STORAGE_URL"],
+        settings.GRIMOIRELAB_ARCHIVIST["STORAGE_USERNAME"],
+        settings.GRIMOIRELAB_ARCHIVIST["STORAGE_PASSWORD"],
+        settings.GRIMOIRELAB_ARCHIVIST["STORAGE_INDEX"],
+        settings.GRIMOIRELAB_ARCHIVIST["STORAGE_VERIFY_CERT"],
+    )
     _wait_redis_ready()
 
     pool = OpenSearchArchivistPool(
@@ -238,14 +254,14 @@ def archivists(workers: int, verbose: bool, burst: bool):
         stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
         group_name="opensearch-archivist",
         num_consumers=workers,
-        stream_block_timeout=settings.GRIMOIRELAB_ARCHIVIST['BLOCK_TIMEOUT'],
+        stream_block_timeout=settings.GRIMOIRELAB_ARCHIVIST["BLOCK_TIMEOUT"],
         verbose=verbose,
         # OpenSearch parameters
-        url=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_URL'],
-        user=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_USERNAME'],
-        password=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_PASSWORD'],
-        index=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_INDEX'],
-        bulk_size=settings.GRIMOIRELAB_ARCHIVIST['BULK_SIZE'],
-        verify_certs=settings.GRIMOIRELAB_ARCHIVIST['STORAGE_VERIFY_CERT'],
+        url=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_URL"],
+        user=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_USERNAME"],
+        password=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_PASSWORD"],
+        index=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_INDEX"],
+        bulk_size=settings.GRIMOIRELAB_ARCHIVIST["BULK_SIZE"],
+        verify_certs=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_VERIFY_CERT"],
     )
     pool.start(burst=burst)

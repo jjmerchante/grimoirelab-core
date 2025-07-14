@@ -50,27 +50,27 @@ MAPPING = {
                 "properties": {
                     "message": {
                         "type": "text",
-                        "index": True
+                        "index": True,
                     },
                     "AuthorDate": {
                         "type": "date",
-                        "format":
-                            "EEE MMM d HH:mm:ss yyyy Z||EEE MMM d HH:mm:ss yyyy||strict_date_optional_time||epoch_millis"
+                        "format": "EEE MMM d HH:mm:ss yyyy Z||EEE MMM d HH:mm:ss yyyy||strict_date_optional_time||epoch_millis",
                     },
                     "CommitDate": {
                         "type": "date",
-                        "format":
-                            "EEE MMM d HH:mm:ss yyyy Z||EEE MMM d HH:mm:ss yyyy||strict_date_optional_time||epoch_millis"
-                    }
+                        "format": "EEE MMM d HH:mm:ss yyyy Z||EEE MMM d HH:mm:ss yyyy||strict_date_optional_time||epoch_millis",
+                    },
                 }
-            }
+            },
         },
         "dynamic_templates": [
             {
                 "notanalyzed": {
                     "match": "*",
                     "match_mapping_type": "string",
-                    "mapping": {"type": "keyword"},
+                    "mapping": {
+                        "type": "keyword",
+                    },
                 }
             },
             {
@@ -83,7 +83,7 @@ MAPPING = {
                     },
                 }
             },
-        ]
+        ],
     }
 }
 
@@ -101,6 +101,7 @@ class OpenSearchArchivist(Consumer):
     :param verify_certs: Whether to verify SSL certificates
     :param kwargs: Additional keyword arguments to pass to the parent class
     """
+
     def __init__(
         self,
         url: str,

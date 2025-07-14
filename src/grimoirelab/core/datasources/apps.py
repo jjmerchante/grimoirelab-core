@@ -22,5 +22,5 @@ from django.apps import AppConfig
 
 
 class DataSourcesConfig(AppConfig):
-    name = 'grimoirelab.core.datasources'
+    name = "grimoirelab.core.datasources"
     path = os.path.dirname(os.path.abspath(__file__))

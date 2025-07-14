@@ -26,17 +26,17 @@ from django.db.models import CharField
 from ...scheduler.models import (
     SchedulerStatus,
     Task,
-    register_task_model
+    register_task_model,
 )
 from ...scheduler.scheduler import (
     _on_success_callback,
-    _on_failure_callback
+    _on_failure_callback,
 )
 from ...models import MAX_SIZE_CHAR_FIELD
 from .chronicler import (
     chronicler_job,
     ChroniclerProgress,
-    get_chronicler_argument_generator
+    get_chronicler_argument_generator,
 )
 
 if typing.TYPE_CHECKING:
@@ -62,10 +62,11 @@ class EventizerTask(Task):
     :param job_args: extra arguments to pass to the job
         (e.g., 'url', 'owner', 'repository')
     """
+
     datasource_type = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     datasource_category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
 
-    TASK_TYPE = 'eventizer'
+    TASK_TYPE = "eventizer"
 
     @classmethod
     def create_task(
@@ -76,7 +77,8 @@ class EventizerTask(Task):
         datasource_type: str,
         datasource_category: str,
         burst: bool = False,
-        *args, **kwargs
+        *args,
+        **kwargs,
     ) -> Self:
         """Create a new task to eventize data.
 
@@ -98,8 +100,7 @@ class EventizerTask(Task):
         :return: the new task created.
         """
         task = super().create_task(
-            task_args, job_interval, job_max_retries, burst=burst,
-            *args, **kwargs
+            task_args, job_interval, job_max_retries, burst=burst, *args, **kwargs
         )
         task.datasource_type = datasource_type
         task.datasource_category = datasource_category
@@ -116,10 +117,10 @@ class EventizerTask(Task):
         of the task, new parameters will be generated.
         """
         task_args = {
-            'datasource_type': self.datasource_type,
-            'datasource_category': self.datasource_category,
-            'events_stream': settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
-            'stream_max_length': settings.GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH,
+            "datasource_type": self.datasource_type,
+            "datasource_category": self.datasource_category,
+            "events_stream": settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+            "stream_max_length": settings.GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH,
         }
 
         args_gen = get_chronicler_argument_generator(self.datasource_type)
@@ -129,29 +130,29 @@ class EventizerTask(Task):
         if self.status == SchedulerStatus.NEW:
             job_args = args_gen.initial_args(self.task_args)
         elif self.status == SchedulerStatus.COMPLETED:
-            job = self.jobs.all().order_by('-job_num').first()
+            job = self.jobs.all().order_by("-job_num").first()
             if job and job.progress:
                 progress = ChroniclerProgress.from_dict(job.progress)
-                job_args = args_gen.resuming_args(job.job_args['job_args'], progress)
+                job_args = args_gen.resuming_args(job.job_args["job_args"], progress)
             else:
                 job_args = args_gen.initial_args(self.task_args)
         elif self.status == SchedulerStatus.RECOVERY:
-            job = self.jobs.all().order_by('-job_num').first()
+            job = self.jobs.all().order_by("-job_num").first()
             if job and job.progress:
                 progress = ChroniclerProgress.from_dict(job.progress)
-                job_args = args_gen.recovery_args(job.job_args['job_args'], progress)
+                job_args = args_gen.recovery_args(job.job_args["job_args"], progress)
             else:
                 job_args = args_gen.initial_args(self.task_args)
         elif self.status == SchedulerStatus.CANCELED:
-            job = self.jobs.order_by('-job_num').first()
+            job = self.jobs.order_by("-job_num").first()
             if job and job.status == SchedulerStatus.CANCELED:
-                job_args = job.job_args['job_args']
+                job_args = job.job_args["job_args"]
             else:
                 job_args = args_gen.initial_args(self.task_args)
         else:
             job_args = args_gen.initial_args(self.task_args)
 
-        task_args['job_args'] = job_args
+        task_args["job_args"] = job_args
 
         return task_args
 

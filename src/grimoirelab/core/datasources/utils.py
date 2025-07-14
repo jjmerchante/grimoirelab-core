@@ -34,6 +34,7 @@ def generate_uuid(*args):
     :raises ValueError: when anyone of the values is not a string,
         is empty or `None`.
     """
+
     def check_value(v):
         if not isinstance(v, str):
             raise ValueError("%s value is not a string instance" % str(v))
@@ -42,9 +43,9 @@ def generate_uuid(*args):
         else:
             return v
 
-    s = ':'.join(map(check_value, args))
+    s = ":".join(map(check_value, args))
 
-    sha1 = hashlib.sha1(s.encode('utf-8', errors='surrogateescape'))
+    sha1 = hashlib.sha1(s.encode("utf-8", errors="surrogateescape"))
     uuid = sha1.hexdigest()
 
     return uuid

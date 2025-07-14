@@ -63,26 +63,26 @@ def _setup():
     _setup_database()
     _install_static_files()
 
-    click.secho("\nGrimoirelab configuration completed", fg='bright_cyan')
+    click.secho("\nGrimoirelab configuration completed", fg="bright_cyan")
 
 
-def _create_database(database: str = 'default', db_name: str | None = None):
+def _create_database(database: str = "default", db_name: str | None = None):
     """Create an empty database"""
 
     import MySQLdb
     from django.conf import settings
 
     db_params = settings.DATABASES[database]
-    db_name = db_name if db_name else db_params['NAME']
+    db_name = db_name if db_name else db_params["NAME"]
 
-    click.secho("## GrimoireLab database creation\n", fg='bright_cyan')
+    click.secho("## GrimoireLab database creation\n", fg="bright_cyan")
 
     try:
         cursor = MySQLdb.connect(
-            user=db_params['USER'],
-            password=db_params['PASSWORD'],
-            host=db_params['HOST'],
-            port=int(db_params['PORT'])
+            user=db_params["USER"],
+            password=db_params["PASSWORD"],
+            host=db_params["HOST"],
+            port=int(db_params["PORT"]),
         ).cursor()
         cursor.execute(
             f"CREATE DATABASE IF NOT EXISTS {db_name} "
@@ -95,13 +95,12 @@ def _create_database(database: str = 'default', db_name: str | None = None):
     click.echo(f"GrimoireLab database '{db_name}' for '{database}' created.\n")
 
 
-def _setup_database(database: str = 'default'):
+def _setup_database(database: str = "default"):
     """Apply migrations and fixtures to the database"""
 
-    click.secho(f"## GrimoireLab database setup for {database}\n",
-                fg='bright_cyan')
+    click.secho(f"## GrimoireLab database setup for {database}\n", fg="bright_cyan")
 
-    django.core.management.call_command('migrate', database=database)
+    django.core.management.call_command("migrate", database=database)
 
     click.echo()
 
@@ -109,35 +108,41 @@ def _setup_database(database: str = 'default'):
 def _install_static_files():
     """Collect static files and install them."""
 
-    click.secho('## GrimoireLab static files installation\n',
-                fg='bright_cyan')
+    click.secho("## GrimoireLab static files installation\n", fg="bright_cyan")
 
-    django.core.management.call_command('collectstatic',
-                                        ignore=['admin', 'rest_framework'],
-                                        clear=True,
-                                        interactive=False)
+    django.core.management.call_command(
+        "collectstatic", ignore=["admin", "rest_framework"], clear=True, interactive=False
+    )
 
     click.echo()
 
 
 @admin.command()
-@click.option('--username', help="Specifies the login for the user.")
-@click.option('--is-admin', is_flag=True, default=False,
-              help="Specifies if the user is superuser.")
-@click.option('--no-interactive', is_flag=True, default=False,
-              help="Run the command in no interactive mode.")
+@click.option("--username", help="Specifies the login for the user.")
+@click.option(
+    "--is-admin",
+    is_flag=True,
+    default=False,
+    help="Specifies if the user is superuser.",
+)
+@click.option(
+    "--no-interactive",
+    is_flag=True,
+    default=False,
+    help="Run the command in no interactive mode.",
+)
 def create_user(username, is_admin, no_interactive):
     """Create a new user given a username and password"""
 
     try:
         if no_interactive:
             # Use password from environment variable, if provided.
-            password = os.environ.get('GRIMOIRELAB_USER_PASSWORD')
+            password = os.environ.get("GRIMOIRELAB_USER_PASSWORD")
             if not password or not password.strip():
                 raise click.ClickException("Password cannot be empty.")
             # Use username from environment variable, if not provided in options.
             if username is None:
-                username = os.environ.get('GRIMOIRELAB_USER_USERNAME')
+                username = os.environ.get("GRIMOIRELAB_USER_USERNAME")
             error = _validate_username(username)
             if error:
                 click.ClickException(error)
@@ -150,20 +155,18 @@ def create_user(username, is_admin, no_interactive):
                 click.ClickException(error)
             # Prompt for a password
             password = getpass.getpass()
-            password2 = getpass.getpass('Password (again): ')
+            password2 = getpass.getpass("Password (again): ")
             if password != password2:
                 raise click.ClickException("Error: Your passwords didn't match.")
-            if password.strip() == '':
+            if password.strip() == "":
                 raise click.ClickException("Error: Blank passwords aren't allowed.")
 
         extra_fields = {}
         if is_admin:
-            extra_fields['is_staff'] = True
-            extra_fields['is_superuser'] = True
+            extra_fields["is_staff"] = True
+            extra_fields["is_superuser"] = True
 
-        get_user_model().objects.create_user(username=username,
-                                             password=password,
-                                             **extra_fields)
+        get_user_model().objects.create_user(username=username, password=password, **extra_fields)
 
         click.echo("User created successfully.")
     except KeyboardInterrupt:
@@ -183,7 +186,7 @@ def _validate_username(username):
     try:
         username_field.clean(username, None)
     except ValidationError as e:
-        return '; '.join(e.messages)
+        return "; ".join(e.messages)
 
 
 @admin.group()
@@ -194,7 +197,7 @@ def queues(ctx: Context):
     pass
 
 
-@queues.command(name='list')
+@queues.command(name="list")
 def list_jobs():
     """List the jobs in the queues.
 
@@ -203,12 +206,12 @@ def list_jobs():
     queue = django_rq.get_queue()
 
     jobs = {
-        'Started': [jid for jid in queue.started_job_registry.get_job_ids()],
-        'Scheduled': [jid for jid in queue.scheduled_job_registry.get_job_ids()],
-        'Failed': [jid for jid in queue.failed_job_registry.get_job_ids()],
-        'Deferred': [jid for jid in queue.deferred_job_registry.get_job_ids()],
-        'Canceled': [jid for jid in queue.canceled_job_registry.get_job_ids()],
-        'Finished': [jid for jid in queue.finished_job_registry.get_job_ids()],
+        "Started": [jid for jid in queue.started_job_registry.get_job_ids()],
+        "Scheduled": [jid for jid in queue.scheduled_job_registry.get_job_ids()],
+        "Failed": [jid for jid in queue.failed_job_registry.get_job_ids()],
+        "Deferred": [jid for jid in queue.deferred_job_registry.get_job_ids()],
+        "Canceled": [jid for jid in queue.canceled_job_registry.get_job_ids()],
+        "Finished": [jid for jid in queue.finished_job_registry.get_job_ids()],
     }
     for key, value in jobs.items():
         click.echo(key)
@@ -216,19 +219,19 @@ def list_jobs():
         click.echo()
 
 
-@queues.command(name='purge')
+@queues.command(name="purge")
 def remove_jobs():
     """Remove the jobs from the queues."""
 
     queue = django_rq.get_queue()
 
     registries = {
-        'Started': queue.failed_job_registry,
-        'Scheduled': queue.finished_job_registry,
-        'Failed': queue.scheduled_job_registry,
-        'Deferred': queue.started_job_registry,
-        'Canceled': queue.canceled_job_registry,
-        'Finished': queue.deferred_job_registry
+        "Started": queue.failed_job_registry,
+        "Scheduled": queue.finished_job_registry,
+        "Failed": queue.scheduled_job_registry,
+        "Deferred": queue.started_job_registry,
+        "Canceled": queue.canceled_job_registry,
+        "Finished": queue.deferred_job_registry,
     }
     for key, registry in registries.items():
         for jid in registry.get_job_ids():

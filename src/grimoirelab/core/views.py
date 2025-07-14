@@ -16,7 +16,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import (
+    authenticate,
+    login,
+)
 from rest_framework import permissions
 from rest_framework.decorators import (
     api_view,
@@ -25,26 +28,31 @@ from rest_framework.decorators import (
 from rest_framework.response import Response
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def api_login(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
+    username = request.data.get("username")
+    password = request.data.get("password")
 
     if username is None or password is None:
-        return Response({'detail': 'Please provide username and password.'}, status=400)
+        return Response(
+            {
+                "detail": "Please provide username and password.",
+            },
+            status=400,
+        )
 
     user = authenticate(request, username=username, password=password)
 
     if user is None:
         response = {
-            'errors': 'Invalid credentials.'
+            "errors": "Invalid credentials.",
         }
         return Response(response, status=403)
     else:
         login(request, user)
         response = {
-            'user': username,
-            'isAdmin': user.is_superuser,
+            "user": username,
+            "isAdmin": user.is_superuser,
         }
         return Response(response)

@@ -32,7 +32,7 @@ from django.db.models import (
     PositiveIntegerField,
     IntegerChoices,
     ForeignKey,
-    CASCADE
+    CASCADE,
 )
 from django.utils.translation import gettext_lazy as _
 
@@ -41,7 +41,7 @@ from grimoirelab_toolkit.datetime import datetime_utcnow
 from ..models import (
     BaseModel,
     MAX_SIZE_CHAR_FIELD,
-    MAX_SIZE_CHAR_INDEX
+    MAX_SIZE_CHAR_INDEX,
 )
 
 
@@ -93,7 +93,8 @@ class Task(BaseModel):
     callback functions to be called when the job is successful or fails
     must be provided.
     """
-    TASK_TYPE = 'task'
+
+    TASK_TYPE = "task"
 
     # Task data
     uuid = CharField(max_length=MAX_SIZE_CHAR_INDEX, unique=True)
@@ -101,8 +102,10 @@ class Task(BaseModel):
     task_args = JSONField(null=True, default=None)
 
     # Status data
-    status = IntegerField(choices=SchedulerStatus.choices,
-                          default=SchedulerStatus.NEW)
+    status = IntegerField(
+        choices=SchedulerStatus.choices,
+        default=SchedulerStatus.NEW,
+    )
     runs = PositiveIntegerField(default=0)
     failures = PositiveIntegerField(default=0)
     last_run = DateTimeField(null=True, default=None)
@@ -110,8 +113,10 @@ class Task(BaseModel):
     # Scheduling configuration
     scheduled_at = DateTimeField(null=True, default=None)
     job_interval = PositiveIntegerField(default=settings.GRIMOIRELAB_JOB_INTERVAL)
-    job_max_retries = PositiveIntegerField(null=True,
-                                           default=settings.GRIMOIRELAB_JOB_MAX_RETRIES)
+    job_max_retries = PositiveIntegerField(
+        null=True,
+        default=settings.GRIMOIRELAB_JOB_MAX_RETRIES,
+    )
     burst = BooleanField(default=False)
 
     class Meta:
@@ -124,7 +129,8 @@ class Task(BaseModel):
         job_interval: int,
         job_max_retries: int,
         burst: bool = False,
-        *args, **kwargs
+        *args,
+        **kwargs,
     ) -> Self:
         """Create a new task.
 
@@ -144,7 +150,7 @@ class Task(BaseModel):
             task_args=task_args,
             job_interval=job_interval,
             job_max_retries=job_max_retries,
-            burst=burst
+            burst=burst,
         )
         task.save()
         return task
@@ -233,20 +239,19 @@ class Job(BaseModel):
     will be set to `COMPLETED`. If there was an error the status
     will be `FAILED`.
     """
+
     # Job data
     uuid = CharField(max_length=MAX_SIZE_CHAR_INDEX, unique=True)
     job_num = PositiveIntegerField(null=False)
     job_args = JSONField(null=True, default=None)
 
     # Status
-    status = IntegerField(choices=SchedulerStatus.choices,
-                          default=SchedulerStatus.ENQUEUED)
+    status = IntegerField(choices=SchedulerStatus.choices, default=SchedulerStatus.ENQUEUED)
     progress = JSONField(encoder=JobResultEncoder, null=True, default=None)
     logs = JSONField(null=True, default=None)
 
     # Scheduling
-    queue = CharField(max_length=MAX_SIZE_CHAR_FIELD,
-                      null=True, default=None)
+    queue = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True, default=None)
     scheduled_at = DateTimeField(null=True, default=None)
     started_at = DateTimeField(null=True, default=None)
     finished_at = DateTimeField(null=True, default=None)
@@ -255,10 +260,7 @@ class Job(BaseModel):
         abstract = True
 
     def save_run(
-        self,
-        status: SchedulerStatus,
-        progress: Any = None,
-        logs: list[str] = None
+        self, status: SchedulerStatus, progress: Any = None, logs: list[str] = None
     ) -> None:
         """Save the result of the job and task execution.
 
@@ -296,11 +298,19 @@ def _create_job_class(task_class: type[Task]) -> type[Job]:
 
     :returns: the new job class.
     """
-    class_name = task_class.__name__.replace('Task', 'Job')
-    job_class = type(class_name, (Job,), {
-        'task': ForeignKey(task_class, on_delete=CASCADE, related_name="jobs",),
-        '__module__': task_class.__module__
-    })
+    class_name = task_class.__name__.replace("Task", "Job")
+    job_class = type(
+        class_name,
+        (Job,),
+        {
+            "task": ForeignKey(
+                task_class,
+                on_delete=CASCADE,
+                related_name="jobs",
+            ),
+            "__module__": task_class.__module__,
+        },
+    )
     return job_class
 
 

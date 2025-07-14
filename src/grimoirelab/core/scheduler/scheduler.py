@@ -37,14 +37,14 @@ from grimoirelab_toolkit.datetime import datetime_utcnow
 from .db import (
     find_tasks_by_status,
     find_job,
-    find_task
+    find_task,
 )
 from .errors import NotFoundError
 from .models import (
     Job,
     SchedulerStatus,
     Task,
-    get_registered_task_model
+    get_registered_task_model,
 )
 
 if typing.TYPE_CHECKING:
@@ -56,7 +56,7 @@ RQ_JOB_STOPPED_STATUS = [
     rq.job.JobStatus.FINISHED,
     rq.job.JobStatus.FAILED,
     rq.job.JobStatus.STOPPED,
-    rq.job.JobStatus.CANCELED
+    rq.job.JobStatus.CANCELED,
 ]
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,8 @@ def schedule_task(
     job_interval: int = settings.GRIMOIRELAB_JOB_INTERVAL,
     job_max_retries: int = settings.GRIMOIRELAB_JOB_MAX_RETRIES,
     burst: bool = False,
-    *args, **kwargs
+    *args,
+    **kwargs,
 ) -> Task:
     """Schedule a task to be executed in the future.
 
@@ -83,13 +84,9 @@ def schedule_task(
     """
     task_class, _ = get_registered_task_model(task_type)
     task = task_class.create_task(
-        task_args, job_interval, job_max_retries, burst=burst,
-        *args, **kwargs
+        task_args, job_interval, job_max_retries, burst=burst, *args, **kwargs
     )
-    _enqueue_task(
-        task,
-        scheduled_at=datetime_utcnow()
-    )
+    _enqueue_task(task, scheduled_at=datetime_utcnow())
 
     return task
 
@@ -121,8 +118,7 @@ def cancel_task(task_uuid: str) -> None:
             job.status = SchedulerStatus.CANCELED
             job.save()
 
-    if task.status not in (SchedulerStatus.COMPLETED,
-                           SchedulerStatus.FAILED):
+    if task.status not in (SchedulerStatus.COMPLETED, SchedulerStatus.FAILED):
         task.status = SchedulerStatus.CANCELED
         task.save()
 
@@ -142,9 +138,11 @@ def reschedule_task(task_uuid: str) -> None:
 
     if task.status == SchedulerStatus.ENQUEUED:
         # Cancel the enqueued job and force the execution
-        job = task.jobs.order_by('-scheduled_at').first()
+        job = task.jobs.order_by("-scheduled_at").first()
         try:
-            job_rq = rq.job.Job.fetch(job.uuid, connection=django_rq.get_connection(task.default_job_queue))
+            job_rq = rq.job.Job.fetch(
+                job.uuid, connection=django_rq.get_connection(task.default_job_queue)
+            )
             job_rq.delete()
         except (rq.exceptions.NoSuchJobError, rq.exceptions.InvalidJobOperation):
             pass
@@ -152,7 +150,7 @@ def reschedule_task(task_uuid: str) -> None:
 
     elif task.status == SchedulerStatus.RUNNING:
         # Make sure it is running
-        job = task.jobs.order_by('-scheduled_at').first()
+        job = task.jobs.order_by("-scheduled_at").first()
         if _is_job_removed_or_stopped(job, task.default_job_queue):
             job.save_run(SchedulerStatus.CANCELED)
             _enqueue_task(task)
@@ -171,19 +169,17 @@ def maintain_tasks() -> None:
             SchedulerStatus.RUNNING,
             SchedulerStatus.RECOVERY,
             SchedulerStatus.ENQUEUED,
-            SchedulerStatus.NEW
+            SchedulerStatus.NEW,
         ]
     )
 
     for task in tasks:
-        job_db = task.jobs.order_by('-scheduled_at').first()
+        job_db = task.jobs.order_by("-scheduled_at").first()
 
         if not _is_job_removed_or_stopped(job_db, task.default_job_queue):
             continue
 
-        logger.debug(
-            f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling."
-        )
+        logger.debug(f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling.")
 
         current_time = datetime_utcnow()
         scheduled_at = max(task.scheduled_at, current_time)
@@ -215,10 +211,7 @@ def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
         return True
 
 
-def _enqueue_task(
-    task: Task,
-    scheduled_at: datetime.datetime | None = None
-) -> Job:
+def _enqueue_task(task: Task, scheduled_at: datetime.datetime | None = None) -> Job:
     """Enqueue the task to be executed in the future.
 
     A new job for the task will be created and enqueued in the
@@ -246,24 +239,20 @@ def _enqueue_task(
         job_args=job_args,
         queue=queue,
         scheduled_at=scheduled_at,
-        task=task
+        task=task,
     )
 
     _schedule_job(task, job, scheduled_at, job_args)
 
     logger.info(
-        f"Job #{job.job_id} (task: {task.task_id})"
-        f" enqueued in '{job.queue}' at {scheduled_at}"
+        f"Job #{job.job_id} (task: {task.task_id}) enqueued in '{job.queue}' at {scheduled_at}"
     )
 
     return job
 
 
 def _schedule_job(
-    task: Task,
-    job: Job,
-    scheduled_at: datetime.datetime,
-    job_args: dict[str, Any]
+    task: Task, job: Job, scheduled_at: datetime.datetime, job_args: dict[str, Any]
 ) -> rq.job.Job:
     """Schedule the job to be executed."""
 
@@ -299,11 +288,7 @@ def _schedule_job(
 
 
 def _on_success_callback(
-    job: rq.job.Job,
-    connection: redis.Redis,
-    result: Any,
-    *args,
-    **kwargs
+    job: rq.job.Job, connection: redis.Redis, result: Any, *args, **kwargs
 ) -> None:
     """Reschedule the job based on the interval defined by the task.
 
@@ -320,13 +305,10 @@ def _on_success_callback(
         logger.error("Job not found. Not rescheduling.")
         return
 
-    job_db.save_run(SchedulerStatus.COMPLETED,
-                    progress=result, logs=job.meta.get('log', None))
+    job_db.save_run(SchedulerStatus.COMPLETED, progress=result, logs=job.meta.get("log", None))
     task = job_db.task
 
-    logger.info(
-        f"Job #{job_db.job_id} (task: {task.task_id}) completed."
-    )
+    logger.info(f"Job #{job_db.job_id} (task: {task.task_id}) completed.")
 
     # Reschedule task
     if task.burst:
@@ -338,11 +320,7 @@ def _on_success_callback(
 
 
 def _on_failure_callback(
-    job: rq.job.JobRQ,
-    connection: redis.Redis,
-    t: Any,
-    value: Any,
-    traceback: Any
+    job: rq.job.JobRQ, connection: redis.Redis, t: Any, value: Any, traceback: Any
 ):
     """Reschedule the job when it failed.
 
@@ -365,20 +343,16 @@ def _on_failure_callback(
         logger.error("Job not found. Not rescheduling.")
         return
 
-    job_db.save_run(SchedulerStatus.FAILED,
-                    progress=job.meta['progress'],
-                    logs=job.meta.get('log', None))
+    job_db.save_run(
+        SchedulerStatus.FAILED, progress=job.meta["progress"], logs=job.meta.get("log", None)
+    )
     task = job_db.task
 
-    logger.error(
-        f"Job #{job_db.job_id} (task: {task.task_id}) failed; error: {value}"
-    )
+    logger.error(f"Job #{job_db.job_id} (task: {task.task_id}) failed; error: {value}")
 
     # Try to retry the task
     if task.failures >= task.job_max_retries:
-        logger.error(
-            f"Task: {task.task_id} max retries reached; cancelled"
-        )
+        logger.error(f"Task: {task.task_id} max retries reached; cancelled")
         return
     elif not task.can_be_retried():
         logger.error(f"Task: {task.task_id} can't be retried")
