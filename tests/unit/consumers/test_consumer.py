@@ -20,10 +20,7 @@ import logging
 import multiprocessing
 import time
 
-from grimoirelab.core.consumers.consumer import (
-    Consumer,
-    Entry
-)
+from grimoirelab.core.consumers.consumer import Consumer, Entry
 
 from ..base import GrimoireLabTestCase
 from ...utils import RedisStream

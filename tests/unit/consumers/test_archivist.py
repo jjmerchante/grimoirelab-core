@@ -20,18 +20,13 @@ import logging
 
 from unittest.mock import patch, MagicMock
 
-from grimoirelab.core.consumers.archivist import (
-    OpenSearchArchivist,
-    Entry,
-    MAPPING
-)
+from grimoirelab.core.consumers.archivist import OpenSearchArchivist, Entry, MAPPING
 
 from ..base import GrimoireLabTestCase
 
 
 class TestOpenSearchArchivist(GrimoireLabTestCase):
-
-    @patch('grimoirelab.core.consumers.archivist.OpenSearch')
+    @patch("grimoirelab.core.consumers.archivist.OpenSearch")
     def test_initialization(self, mock_opensearch):
         """Test whether the OpenSearchArchivist is initialized correctly"""
 
@@ -68,7 +63,7 @@ class TestOpenSearchArchivist(GrimoireLabTestCase):
         )
         mock_client.indices.create.assert_called_once_with("test_index", body=MAPPING)
 
-    @patch('grimoirelab.core.consumers.archivist.OpenSearch')
+    @patch("grimoirelab.core.consumers.archivist.OpenSearch")
     def test_process_entries(self, mock_opensearch):
         """Test whether entries are processed correctly"""
 
@@ -116,11 +111,11 @@ class TestOpenSearchArchivist(GrimoireLabTestCase):
                 '{"index" : {"_id" : "value_3" } }\n'
                 '{"id": "value_3"}\n'
             ),
-            index="test_index"
+            index="test_index",
         )
         archivist.ack_entries.assert_called_once_with(["1-0", "2-0", "3-0"])
 
-    @patch('grimoirelab.core.consumers.archivist.OpenSearch')
+    @patch("grimoirelab.core.consumers.archivist.OpenSearch")
     def test_process_entries_failed(self, mock_opensearch):
         """Test whether entries are processed and failed entries aren't acked"""
 
@@ -168,6 +163,6 @@ class TestOpenSearchArchivist(GrimoireLabTestCase):
                 '{"index" : {"_id" : "value_3" } }\n'
                 '{"id": "value_3"}\n'
             ),
-            index="test_index"
+            index="test_index",
         )
         archivist.ack_entries.assert_called_once_with(["1-0", "3-0"])

@@ -20,10 +20,7 @@ import logging
 
 import rq
 
-from grimoirelab.core.scheduler.jobs import (
-    GrimoireLabJob,
-    JobLogHandler
-)
+from grimoirelab.core.scheduler.jobs import GrimoireLabJob, JobLogHandler
 
 from ..base import GrimoireLabTestCase
 
@@ -52,8 +49,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
     def test_create(self):
         """Tests whether the job creation is correct"""
 
-        job = GrimoireLabJob.create(func=do_something,
-                                    connection=self.conn)
+        job = GrimoireLabJob.create(func=do_something, connection=self.conn)
 
         self.assertEqual(job.progress, None)
         self.assertEqual(job.log, [])
@@ -69,67 +65,57 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
     def test_progress(self):
         """Tests the progress property"""
 
-        job = GrimoireLabJob.create(func=do_something,
-                                    connection=self.conn)
+        job = GrimoireLabJob.create(func=do_something, connection=self.conn)
         job.progress = 50
 
         self.assertEqual(job.progress, 50)
-        self.assertEqual(job.meta['progress'], 50)
+        self.assertEqual(job.meta["progress"], 50)
 
     def test_log(self):
         """Tests the log property"""
 
         grimoire_job = GrimoireLabJob.create(
-            func=do_something,
-            connection=self.conn,
-            loggers=[__name__]
+            func=do_something, connection=self.conn, loggers=[__name__]
         )
 
-        grimoire_job.add_log({'msg': "This is a log message"})
+        grimoire_job.add_log({"msg": "This is a log message"})
 
         self.assertEqual(len(grimoire_job.log), 1)
-        self.assertEqual(grimoire_job.log[0]['msg'], "This is a log message")
+        self.assertEqual(grimoire_job.log[0]["msg"], "This is a log message")
 
     def test_job(self):
         """Tests if the job is run and logs are generated"""
 
-        job = GrimoireLabJob.create(func=do_something,
-                                    connection=self.conn,
-                                    loggers=[__name__, 'grimoirelab.core.scheduler.jobs'])
-        q = rq.Queue(
-            'test-queue',
-            job_class=GrimoireLabJob,
+        job = GrimoireLabJob.create(
+            func=do_something,
             connection=self.conn,
-            is_async=False
+            loggers=[__name__, "grimoirelab.core.scheduler.jobs"],
         )
+        q = rq.Queue("test-queue", job_class=GrimoireLabJob, connection=self.conn, is_async=False)
         job = q.enqueue_job(job)
 
         self.assertEqual(job.return_value(), "Job executed successfully")
         self.assertEqual(len(job.log), 1)
-        self.assertEqual(job.log[0]['msg'], "This is a log message")
+        self.assertEqual(job.log[0]["msg"], "This is a log message")
 
         # Check if log handler is removed after execution
-        self.assertNotIn(job._job_logger,
-                         logging.getLogger(__name__).handlers)
+        self.assertNotIn(job._job_logger, logging.getLogger(__name__).handlers)
 
     def test_job_capture_exception(self):
         """Checks if the job captures exceptions and logs them"""
 
-        job = GrimoireLabJob.create(func=do_something_and_fail,
-                                    connection=self.conn,
-                                    loggers=[__name__, 'grimoirelab.core.scheduler.jobs'])
-        q = rq.Queue(
-            'test-queue',
-            job_class=GrimoireLabJob,
+        job = GrimoireLabJob.create(
+            func=do_something_and_fail,
             connection=self.conn,
-            is_async=False
+            loggers=[__name__, "grimoirelab.core.scheduler.jobs"],
         )
+        q = rq.Queue("test-queue", job_class=GrimoireLabJob, connection=self.conn, is_async=False)
         job = q.enqueue_job(job)
 
         self.assertEqual(job.return_value(), None)
         self.assertEqual(len(job.log), 2)
-        self.assertEqual(job.log[0]['msg'], "This is a log message")
-        self.assertRegex(job.log[1]['msg'], "Traceback")
+        self.assertEqual(job.log[0]["msg"], "This is a log message")
+        self.assertRegex(job.log[1]["msg"], "Traceback")
 
 
 class TestJobLogHandler(GrimoireLabTestCase):
@@ -160,8 +146,7 @@ class TestJobLogHandler(GrimoireLabTestCase):
 
         # Check if the logs are saved in the job 'meta' field
         self.assertEqual(len(job.log), 3)
-        self.assertEqual(sorted(list(job.log[0].keys())),
-                         ['created', 'level', 'module', 'msg'])
-        self.assertRegex(job.log[0]['msg'], 'error')
-        self.assertRegex(job.log[1]['msg'], 'warning')
-        self.assertRegex(job.log[2]['msg'], 'info')
+        self.assertEqual(sorted(list(job.log[0].keys())), ["created", "level", "module", "msg"])
+        self.assertRegex(job.log[0]["msg"], "error")
+        self.assertRegex(job.log[1]["msg"], "warning")
+        self.assertRegex(job.log[2]["msg"], "info")

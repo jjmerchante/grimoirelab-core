@@ -41,6 +41,7 @@ class GrimoireLabClient:
     :param password: Password to use when authentication is required.
     :param verify_certs: Verify the server's SSL certificate.
     """
+
     def __init__(self, url: str, user: str = None, password: str = None, verify_certs: bool = True):
         self.url = url
         self.user = user

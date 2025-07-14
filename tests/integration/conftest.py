@@ -89,12 +89,16 @@ def grimoirelab_config():
     os.environ["GRIMOIRELAB_REDIS_PORT"] = str(redis.get_exposed_port(6379))
     os.environ["GRIMOIRELAB_DB_PORT"] = str(mysql.get_exposed_port(3306))
     os.environ["GRIMOIRELAB_DB_PASSWORD"] = mysql.root_password
-    os.environ["GRIMOIRELAB_ARCHIVIST_STORAGE_URL"] = f"http://localhost:{opensearch.get_exposed_port(9200)}"
+    os.environ["GRIMOIRELAB_ARCHIVIST_STORAGE_URL"] = (
+        f"http://localhost:{opensearch.get_exposed_port(9200)}"
+    )
     os.environ["GRIMOIRELAB_USER_PASSWORD"] = "admin"
     os.environ["GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT"] = "1000"
 
     subprocess.run(["grimoirelab", "admin", "setup"])
-    subprocess.run(["grimoirelab", "admin", "create-user", "--username", "admin", "--no-interactive"])
+    subprocess.run(
+        ["grimoirelab", "admin", "create-user", "--username", "admin", "--no-interactive"]
+    )
 
 
 @pytest.fixture

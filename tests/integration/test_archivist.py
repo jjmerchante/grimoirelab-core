@@ -22,13 +22,7 @@ import logging
 import time
 
 from grimoirelab.core.consumers.archivist import OpenSearchArchivist, OpenSearchArchivistPool
-from .conftest import (
-    EVENTS_INDEX,
-    STREAM_NAME,
-    CONSUMER_GROUP,
-    CONSUMER_NAME,
-    opensearch
-)
+from .conftest import EVENTS_INDEX, STREAM_NAME, CONSUMER_GROUP, CONSUMER_NAME, opensearch
 
 from ..utils import RedisStream, read_file
 
@@ -47,7 +41,7 @@ def test_archivist_start(redis_conn, opensearch_conn, run_archivist):
 
     # Check if the events are in OpenSearch
     result = opensearch_conn.count(index=EVENTS_INDEX)
-    assert result['count'] == len(events)
+    assert result["count"] == len(events)
 
     # Check if the events are not in Redis
     pending = redis_conn.xpending(STREAM_NAME, CONSUMER_GROUP)
@@ -62,7 +56,7 @@ def test_insert_many_huge_events(redis_conn, opensearch_conn):
     rstream.create_group(CONSUMER_GROUP)
     event = json.loads(read_file("tests/integration/data/huge_event.json"))
     for i in range(10):
-        event['id'] = hashlib.sha1(f"event-{i}".encode('utf-8')).hexdigest()
+        event["id"] = hashlib.sha1(f"event-{i}".encode("utf-8")).hexdigest()
         rstream.add_entry(event=event, message_id=f"{i + 1}-0")
 
     archivist = OpenSearchArchivist(
@@ -88,7 +82,7 @@ def test_insert_many_huge_events(redis_conn, opensearch_conn):
 
     # Check if the events are in OpenSearch
     result = opensearch_conn.count(index=EVENTS_INDEX)
-    assert result['count'] == 0
+    assert result["count"] == 0
 
     # Check if the events are still pending
     pending = redis_conn.xpending(STREAM_NAME, CONSUMER_GROUP)
@@ -106,7 +100,7 @@ def test_insert_many_huge_events(redis_conn, opensearch_conn):
 
     # Check if the events are in OpenSearch
     result = opensearch_conn.count(index=EVENTS_INDEX)
-    assert result['count'] == 10
+    assert result["count"] == 10
 
     # Check if the events are still pending
     pending = redis_conn.xpending(STREAM_NAME, CONSUMER_GROUP)
@@ -143,7 +137,7 @@ def archivist_pool(redis_conn, opensearch_conn):
 
     # Check the events are in OpenSearch
     result = opensearch_conn.count(index=EVENTS_INDEX)
-    assert result['count'] == len(events)
+    assert result["count"] == len(events)
 
     # Check that the events are not in Redis
     pending = redis_conn.xpending(STREAM_NAME, CONSUMER_GROUP)
