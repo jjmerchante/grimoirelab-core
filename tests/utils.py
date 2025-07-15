@@ -30,10 +30,14 @@ class RedisStream:
         self.redis_connection.xgroup_create(self.stream_name, group_name, id="0", mkstream=True)
 
     def add_entry(self, event, message_id):
-        self.redis_connection.xadd(self.stream_name, {b"data": json.dumps(event).encode()}, id=message_id)
+        self.redis_connection.xadd(
+            self.stream_name, {b"data": json.dumps(event).encode()}, id=message_id
+        )
 
     def read_group(self, group_name, consumer_name, total):
-        return self.redis_connection.xreadgroup(group_name, consumer_name, {self.stream_name: ">"}, count=total)
+        return self.redis_connection.xreadgroup(
+            group_name, consumer_name, {self.stream_name: ">"}, count=total
+        )
 
 
 def read_file(filename):

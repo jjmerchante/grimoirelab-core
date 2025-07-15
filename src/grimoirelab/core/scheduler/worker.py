@@ -42,7 +42,10 @@ class GrimoireLabWorker(rq.worker.Worker):
     This class includes some extra functionality to run GrimoireLab
     jobs, like for example, update Job status on models.
     """
-    def prepare_job_execution(self, job: GrimoireLabJob, remove_from_intermediate_queue: bool = False):
+
+    def prepare_job_execution(
+        self, job: GrimoireLabJob, remove_from_intermediate_queue: bool = False
+    ):
         """Performs bookkeeping like updating states prior to job execution."""
 
         super().prepare_job_execution(job, remove_from_intermediate_queue)

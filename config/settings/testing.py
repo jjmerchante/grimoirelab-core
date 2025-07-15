@@ -7,43 +7,38 @@ import django_rq.queues
 
 from fakeredis import FakeRedis, FakeStrictRedis
 
-INSTALLED_APPS.append('tests')
+INSTALLED_APPS.append("tests")
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': True,
-    'loggers': {
-        "grimoirelab.core": {
-            "level": "CRITICAL"
-        },
-    }
+    "version": 1,
+    "disable_existing_loggers": True,
+    "loggers": {
+        "grimoirelab.core": {"level": "CRITICAL"},
+    },
 }
 
 SQL_MODE = [
-    'NO_ZERO_IN_DATE',
-    'NO_ZERO_DATE',
-    'ERROR_FOR_DIVISION_BY_ZERO',
-    'NO_AUTO_CREATE_USER',
-    'NO_ENGINE_SUBSTITUTION',
+    "NO_ZERO_IN_DATE",
+    "NO_ZERO_DATE",
+    "ERROR_FOR_DIVISION_BY_ZERO",
+    "NO_AUTO_CREATE_USER",
+    "NO_ENGINE_SUBSTITUTION",
 ]
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'USER': 'root',
-        'PASSWORD': 'root',
-        'NAME': 'grimoirelab_db',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'sql_mode': ','.join(SQL_MODE)
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "USER": "root",
+        "PASSWORD": "root",
+        "NAME": "grimoirelab_db",
+        "OPTIONS": {"charset": "utf8mb4", "sql_mode": ",".join(SQL_MODE)},
+        "TEST": {
+            "NAME": "testgrimoire",
+            "CHARSET": "utf8mb4",
+            "COLLATION": "utf8mb4_unicode_520_ci",
         },
-        'TEST': {
-            'NAME': 'testgrimoire',
-            'CHARSET': 'utf8mb4',
-            'COLLATION': 'utf8mb4_unicode_520_ci',
-        },
-        'HOST': '127.0.0.1',
-        'PORT': 3306
+        "HOST": "127.0.0.1",
+        "PORT": 3306,
     }
 }
 
@@ -66,9 +61,9 @@ class FakeRedisConn:
         return self.conn
 
 
-RQ_QUEUES['default'] = _RQ_DATABASE  # noqa: F405
-RQ_QUEUES['testing'] = _RQ_DATABASE  # noqa: F405
-RQ['WORKER_CLASS'] = 'grimoirelab.core.scheduler.worker.GrimoireLabSimpleWorker'
+RQ_QUEUES["default"] = _RQ_DATABASE  # noqa: F405
+RQ_QUEUES["testing"] = _RQ_DATABASE  # noqa: F405
+RQ["WORKER_CLASS"] = "grimoirelab.core.scheduler.worker.GrimoireLabSimpleWorker"
 
 django_rq.queues.get_redis_connection = FakeRedisConn()
 
@@ -77,8 +72,8 @@ django_rq.queues.get_redis_connection = FakeRedisConn()
 # This warning is raised when the model is registered twice.
 # This is only happening because we are running the tests with
 # custom test models that need to be registered several times.
-warnings.filterwarnings('ignore', message=r"Model .+ was already registered")
+warnings.filterwarnings("ignore", message=r"Model .+ was already registered")
 
 # This is raised because fakeredis does not support the CLIENT SETNAME
 # command. This is not important for the tests.
-warnings.filterwarnings('ignore', message=r"CLIENT SETNAME command not supported")
+warnings.filterwarnings("ignore", message=r"CLIENT SETNAME command not supported")

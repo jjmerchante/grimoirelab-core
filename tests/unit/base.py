@@ -31,6 +31,7 @@ class GrimoireLabTestCase(TransactionTestCase):
     to run tests with database transactions. Also, it provides
     a Redis mock connection to run tests with a Redis database.
     """
+
     conn = None
 
     @classmethod

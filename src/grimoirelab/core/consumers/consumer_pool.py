@@ -63,6 +63,7 @@ class ConsumerPool:
     :param stream_block_timeout: Timeout for blocking read from the stream.
     :param verbose: If True, enable verbose logging.
     """
+
     CONSUMER_CLASS: type[Consumer]
 
     Status = Enum("Status", "IDLE STARTED STOPPED")
@@ -161,9 +162,7 @@ class ConsumerPool:
         """Create the consumer group if it does not exist."""
 
         try:
-            self.connection.xgroup_create(
-                self.stream_name, self.group_name, id="0", mkstream=True
-            )
+            self.connection.xgroup_create(self.stream_name, self.group_name, id="0", mkstream=True)
         except redis.exceptions.ResponseError as e:
             if str(e) != "BUSYGROUP Consumer Group name already exists":
                 raise
@@ -213,7 +212,7 @@ class ConsumerPool:
         for consumer in self._consumers.values():
             try:
                 consumer.process.kill()
-            except OSError as e:
+            except OSError:
                 pass
 
     def _request_stop(self, signum, frame):

@@ -19,12 +19,7 @@
 from django.test import TestCase
 from django.db.utils import IntegrityError
 
-from grimoirelab.core.datasources.models import (
-    Repository,
-    Ecosystem,
-    Project,
-    DataSet
-)
+from grimoirelab.core.datasources.models import Repository, Ecosystem, Project, DataSet
 from grimoirelab.core.scheduler.tasks.models import EventizerTask
 
 
@@ -35,9 +30,7 @@ class RepositoryModelTest(TestCase):
         """Test creating a repository"""
 
         repository = Repository.objects.create(
-            uuid='ABCD',
-            uri="http://example.com",
-            datasource_type="type1"
+            uuid="ABCD", uri="http://example.com", datasource_type="type1"
         )
         self.assertEqual(repository.uuid, "ABCD")
         self.assertEqual(repository.uri, "http://example.com")
@@ -46,16 +39,10 @@ class RepositoryModelTest(TestCase):
     def test_unique_together_constraint(self):
         """Test the unique_together constraint"""
 
-        Repository.objects.create(
-            uuid="ABCD",
-            uri="http://example.com",
-            datasource_type="type1"
-        )
+        Repository.objects.create(uuid="ABCD", uri="http://example.com", datasource_type="type1")
         with self.assertRaises(IntegrityError):
             Repository.objects.create(
-                uuid="EFGH",
-                uri="http://example.com",
-                datasource_type="type1"
+                uuid="EFGH", uri="http://example.com", datasource_type="type1"
             )
 
 
@@ -65,9 +52,7 @@ class EcosystemModelTest(TestCase):
     def test_create_ecosystem(self):
         """Test creating an ecosystem"""
         ecosystem = Ecosystem.objects.create(
-            name="example-ecosystem",
-            title="Example Ecosystem",
-            description="lorem ipsum"
+            name="example-ecosystem", title="Example Ecosystem", description="lorem ipsum"
         )
         self.assertEqual(ecosystem.name, "example-ecosystem")
         self.assertEqual(ecosystem.title, "Example Ecosystem")
@@ -77,9 +62,7 @@ class EcosystemModelTest(TestCase):
         """Test the unique contraint"""
 
         Ecosystem.objects.create(
-            name="example-ecosystem",
-            title="Example Ecosystem",
-            description="lorem ipsum"
+            name="example-ecosystem", title="Example Ecosystem", description="lorem ipsum"
         )
         with self.assertRaises(IntegrityError):
             Ecosystem.objects.create(name="example-ecosystem")
@@ -91,11 +74,9 @@ class ProjectModelTest(TestCase):
     def test_create_project(self):
         """Test creating a project"""
 
-        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
+        ecosystem = Ecosystem.objects.create(name="example-ecosystem")
         project = Project.objects.create(
-            name="example-project",
-            title="Example Project",
-            ecosystem=ecosystem
+            name="example-project", title="Example Project", ecosystem=ecosystem
         )
         self.assertEqual(project.name, "example-project")
         self.assertEqual(project.title, "Example Project")
@@ -105,16 +86,13 @@ class ProjectModelTest(TestCase):
     def test_parent_project(self):
         """Test creating a project with a parent project"""
 
-        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
-        parent_project = Project.objects.create(
-            name="example-project",
-            ecosystem=ecosystem
-        )
+        ecosystem = Ecosystem.objects.create(name="example-ecosystem")
+        parent_project = Project.objects.create(name="example-project", ecosystem=ecosystem)
         project = Project.objects.create(
             name="child-project",
             title="Example Project",
             ecosystem=ecosystem,
-            parent_project=parent_project
+            parent_project=parent_project,
         )
         self.assertEqual(project.name, "child-project")
         self.assertEqual(project.title, "Example Project")
@@ -132,12 +110,8 @@ class ProjectModelTest(TestCase):
     def test_unique_together(self):
         """Test the unique together constraint"""
 
-        ecosystem = Ecosystem.objects.create(name='example-ecosystem')
-        Project.objects.create(
-            name="example-project",
-            title="Example Project",
-            ecosystem=ecosystem
-        )
+        ecosystem = Ecosystem.objects.create(name="example-ecosystem")
+        Project.objects.create(name="example-project", title="Example Project", ecosystem=ecosystem)
         with self.assertRaises(IntegrityError):
             Project.objects.create(name="example-project", ecosystem=ecosystem)
 
@@ -147,34 +121,25 @@ class DataSetModelTest(TestCase):
 
     def setUp(self):
         ecosystem = Ecosystem.objects.create(
-            name="example-ecosystem",
-            title="Example Ecosystem",
-            description="lorem ipsum"
+            name="example-ecosystem", title="Example Ecosystem", description="lorem ipsum"
         )
-        self.project = Project.objects.create(
-            name='example-project',
-            ecosystem=ecosystem
-        )
+        self.project = Project.objects.create(name="example-project", ecosystem=ecosystem)
         self.repository = Repository.objects.create(
-            uri='http://example.com',
-            datasource_type='type1'
+            uri="http://example.com", datasource_type="type1"
         )
         self.task = EventizerTask.create_task(
-            task_args={'uri': 'uri'},
+            task_args={"uri": "uri"},
             job_interval=86400,
             job_max_retries=3,
-            datasource_type='git',
-            datasource_category='commit'
+            datasource_type="git",
+            datasource_category="commit",
         )
 
     def test_create_dataset(self):
         """Test creating a dataset"""
 
         dataset = DataSet.objects.create(
-            project=self.project,
-            repository=self.repository,
-            category="category1",
-            task=self.task
+            project=self.project, repository=self.repository, category="category1", task=self.task
         )
         self.assertEqual(dataset.repository, self.repository)
         self.assertEqual(dataset.project, self.project)
@@ -185,26 +150,20 @@ class DataSetModelTest(TestCase):
         """Test the unique_together constraint"""
 
         DataSet.objects.create(
-            project=self.project,
-            repository=self.repository,
-            category="category1",
-            task=self.task
+            project=self.project, repository=self.repository, category="category1", task=self.task
         )
         with self.assertRaises(IntegrityError):
             DataSet.objects.create(
                 project=self.project,
                 repository=self.repository,
                 category="category1",
-                task=self.task
+                task=self.task,
             )
 
     def test_dataset_without_task(self):
         """Test creating a dataset without a task"""
 
         dataset = DataSet.objects.create(
-            project=self.project,
-            repository=self.repository,
-            category="category1",
-            task=None
+            project=self.project, repository=self.repository, category="category1", task=None
         )
         self.assertIsNone(dataset.task)

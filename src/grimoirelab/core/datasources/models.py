@@ -21,12 +21,16 @@ from django.db.models import (
     CharField,
     CASCADE,
     ForeignKey,
-    OneToOneField
+    OneToOneField,
 )
 from django.core.validators import RegexValidator
 
 from ..scheduler.tasks.models import EventizerTask
-from ..models import BaseModel, MAX_SIZE_CHAR_FIELD, MAX_SIZE_NAME_FIELD
+from ..models import (
+    BaseModel,
+    MAX_SIZE_CHAR_FIELD,
+    MAX_SIZE_NAME_FIELD,
+)
 
 
 class Repository(BaseModel):
@@ -34,17 +38,23 @@ class Repository(BaseModel):
 
     A repository is composed of a backend and a URI.
     """
+
     uuid = CharField(max_length=MAX_SIZE_CHAR_FIELD, default=uuid.uuid4, unique=True)
     uri = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     datasource_type = CharField(max_length=MAX_SIZE_CHAR_FIELD)
 
     class Meta:
-        unique_together = ['uri', 'datasource_type']
+        unique_together = [
+            "uri",
+            "datasource_type",
+        ]
 
 
 validate_name = RegexValidator(
     r"^[a-z]+(?:-[a-z0-9]+)*$",
-    ("Field may only contain alphanumeric characters or hyphens. It may only start with a letter and cannot end with a hyphen."),
+    (
+        "Field may only contain alphanumeric characters or hyphens. It may only start with a letter and cannot end with a hyphen."
+    ),
     "invalid",
 )
 
@@ -55,12 +65,13 @@ class Ecosystem(BaseModel):
     An ecosystem abstract set of projects which may share a common context.
     It is composed of a unique name and an optional title and description.
     """
+
     name = CharField(unique=True, max_length=MAX_SIZE_NAME_FIELD, validators=[validate_name])
     title = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
     description = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
 
 class Project(BaseModel):
@@ -81,18 +92,20 @@ class Project(BaseModel):
     :param parent_project: Parent project object
     :param ecosystem: Ecosystem which the project belongs to
     """
+
     name = CharField(max_length=MAX_SIZE_NAME_FIELD, validators=[validate_name])
     title = CharField(max_length=MAX_SIZE_CHAR_FIELD, null=True)
-    parent_project = ForeignKey('project',
-                                parent_link=True,
-                                null=True,
-                                on_delete=CASCADE,
-                                related_name='subprojects')
-    ecosystem = ForeignKey('ecosystem', on_delete=CASCADE)
+    parent_project = ForeignKey(
+        "project", parent_link=True, null=True, on_delete=CASCADE, related_name="subprojects"
+    )
+    ecosystem = ForeignKey("ecosystem", on_delete=CASCADE)
 
     class Meta:
-        ordering = ['name']
-        unique_together = ['name', 'ecosystem']
+        ordering = ["name"]
+        unique_together = [
+            "name",
+            "ecosystem",
+        ]
 
 
 class DataSet(BaseModel):
@@ -102,11 +115,16 @@ class DataSet(BaseModel):
     Each repository is fetched by a task. The task will be executed
     recurrently.
     """
+
     project = ForeignKey(Project, on_delete=CASCADE)
     repository = ForeignKey(Repository, on_delete=CASCADE)
     category = CharField(max_length=MAX_SIZE_CHAR_FIELD)
     task = OneToOneField(EventizerTask, on_delete=CASCADE, null=True, default=None)
 
     class Meta:
-        ordering = ['id']
-        unique_together = ['project', 'repository', 'category']
+        ordering = ["id"]
+        unique_together = [
+            "project",
+            "repository",
+            "category",
+        ]

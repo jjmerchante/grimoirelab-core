@@ -22,5 +22,5 @@ from django.apps import AppConfig
 
 
 class TasksConfig(AppConfig):
-    name = 'grimoirelab.core.scheduler.tasks'
+    name = "grimoirelab.core.scheduler.tasks"
     path = os.path.dirname(os.path.abspath(__file__))

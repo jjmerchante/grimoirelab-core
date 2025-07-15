@@ -29,7 +29,7 @@ from grimoirelab.core.scheduler.models import (
     register_task_model,
     get_registered_task_model,
     get_all_registered_task_models,
-    GRIMOIRELAB_TASK_MODELS
+    GRIMOIRELAB_TASK_MODELS,
 )
 
 from ..base import GrimoireLabTestCase
@@ -38,16 +38,16 @@ from ..base import GrimoireLabTestCase
 class DummyTask(Task):
     """Class for testing the task register"""
 
-    TASK_TYPE = 'dummy_task'
+    TASK_TYPE = "dummy_task"
 
 
 class AnotherDummyTask(Task):
     """Class for testing the task register"""
 
-    TASK_TYPE = 'another_dummy_task'
+    TASK_TYPE = "another_dummy_task"
 
 
-@unittest.mock.patch('uuid.uuid4', return_value='abcdefg')
+@unittest.mock.patch("uuid.uuid4", return_value="abcdefg")
 class TestTaskModel(GrimoireLabTestCase):
     """Unit tests for task model"""
 
@@ -67,13 +67,11 @@ class TestTaskModel(GrimoireLabTestCase):
     def test_create_task(self, mock_uuid):
         """Task is correctly created"""
 
-        task = DummyTask.create_task(
-            {'arg': 'value'}, 15, 10, burst=True
-        )
+        task = DummyTask.create_task({"arg": "value"}, 15, 10, burst=True)
         self.assertEqual(task.id, 1)
-        self.assertEqual(task.uuid, 'abcdefg')
-        self.assertEqual(task.task_type, 'dummy_task')
-        self.assertEqual(task.task_args, {'arg': 'value'})
+        self.assertEqual(task.uuid, "abcdefg")
+        self.assertEqual(task.task_type, "dummy_task")
+        self.assertEqual(task.task_args, {"arg": "value"})
         self.assertEqual(task.job_interval, 15)
         self.assertEqual(task.job_max_retries, 10)
         self.assertEqual(task.burst, True)
@@ -88,7 +86,7 @@ class TestTaskModel(GrimoireLabTestCase):
 
         task = DummyTask.create_task({}, 0, 0, burst=False)
 
-        self.assertEqual(task.task_id, 'grimoire:task:abcdefg')
+        self.assertEqual(task.task_id, "grimoire:task:abcdefg")
 
     def test_save_run(self, mock_uuid):
         """Task status is correctly updated when save_run is called"""
@@ -125,48 +123,48 @@ class TestTaskRegistration(GrimoireLabTestCase):
     def test_register_task(self):
         """Task is correctly registered and job class is created"""
 
-        task_class, job_class = register_task_model('dummy_task', DummyTask)
+        task_class, job_class = register_task_model("dummy_task", DummyTask)
 
         self.assertEqual(task_class, DummyTask)
-        self.assertEqual(job_class.__name__, 'DummyJob')
+        self.assertEqual(job_class.__name__, "DummyJob")
 
-        registered_task = GRIMOIRELAB_TASK_MODELS['dummy_task']
+        registered_task = GRIMOIRELAB_TASK_MODELS["dummy_task"]
         self.assertEqual(registered_task[0], task_class)
         self.assertEqual(registered_task[1], job_class)
 
     def test_get_registered_task(self):
         """Task type is correctly retrieved from the registry"""
 
-        t = DummyTask, type('DummyJob', (Job,), {'__module__': __name__})
-        GRIMOIRELAB_TASK_MODELS['dummy_task'] = t
+        t = DummyTask, type("DummyJob", (Job,), {"__module__": __name__})
+        GRIMOIRELAB_TASK_MODELS["dummy_task"] = t
 
-        task_class, job_class = get_registered_task_model('dummy_task')
+        task_class, job_class = get_registered_task_model("dummy_task")
 
         self.assertEqual(task_class, DummyTask)
-        self.assertEqual(job_class.__name__, 'DummyJob')
+        self.assertEqual(job_class.__name__, "DummyJob")
 
     def test_job_class_type(self):
         """The job created when registering a task is a subclass of Job"""
 
-        task_class, job_class = register_task_model('dummy_task', DummyTask)
+        task_class, job_class = register_task_model("dummy_task", DummyTask)
 
         self.assertEqual(task_class, DummyTask)
-        self.assertEqual(job_class.__name__, 'DummyJob')
+        self.assertEqual(job_class.__name__, "DummyJob")
         self.assertEqual(issubclass(job_class, Job), True)
 
     def test_register_task_already_registered(self):
         """A ValueError exception is raised if the given task already exists"""
 
-        register_task_model('dummy_task', DummyTask)
+        register_task_model("dummy_task", DummyTask)
 
         with self.assertRaises(ValueError):
-            register_task_model('dummy_task', DummyTask)
+            register_task_model("dummy_task", DummyTask)
 
     def test_get_registered_task_not_found(self):
         """A KeyError exception is raised if the given task is not found"""
 
         with self.assertRaises(KeyError):
-            get_registered_task_model('non_existent_task')
+            get_registered_task_model("non_existent_task")
 
     def test_get_all_registered_task_models_empty(self):
         """An empty list is returned when the registry is empty"""
@@ -177,13 +175,13 @@ class TestTaskRegistration(GrimoireLabTestCase):
     def test_get_all_registered_task_models(self):
         """A list with all the registered task is returned"""
 
-        register_task_model('dummy_task', DummyTask)
-        register_task_model('another_dummy_task', AnotherDummyTask)
+        register_task_model("dummy_task", DummyTask)
+        register_task_model("another_dummy_task", AnotherDummyTask)
 
         models = list(get_all_registered_task_models())
 
         self.assertEqual(len(models), 2)
         self.assertEqual(models[0][0], DummyTask)
-        self.assertEqual(models[0][1].__name__, 'DummyJob')
+        self.assertEqual(models[0][1].__name__, "DummyJob")
         self.assertEqual(models[1][0], AnotherDummyTask)
-        self.assertEqual(models[1][1].__name__, 'AnotherDummyJob')
+        self.assertEqual(models[1][1].__name__, "AnotherDummyJob")

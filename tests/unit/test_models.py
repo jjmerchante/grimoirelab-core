@@ -21,10 +21,7 @@ from django.db.models import CharField
 
 from grimoirelab_toolkit.datetime import datetime_utcnow
 
-from grimoirelab.core.models import (
-    MAX_SIZE_CHAR_FIELD,
-    BaseModel
-)
+from grimoirelab.core.models import MAX_SIZE_CHAR_FIELD, BaseModel
 
 from .base import GrimoireLabTestCase
 
@@ -65,7 +62,7 @@ class TestBaseModel(GrimoireLabTestCase):
         self.assertLessEqual(base.created_at, after_dt)
 
     def test_created_at_not_updated(self):
-        """"Creation date is not updated when the object is modified"""
+        """ "Creation date is not updated when the object is modified"""
 
         before_dt = datetime_utcnow()
         base = BaseModelTest(name="base test")

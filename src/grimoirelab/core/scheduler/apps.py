@@ -26,5 +26,5 @@ from django.apps import AppConfig
 
 
 class SchedulerConfig(AppConfig):
-    name = 'grimoirelab.core.scheduler'
+    name = "grimoirelab.core.scheduler"
     path = os.path.dirname(os.path.abspath(__file__))

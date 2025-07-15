@@ -18,9 +18,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SILENCED_SYSTEM_CHECKS = [
-    'django_mysql.E016'
-]
+SILENCED_SYSTEM_CHECKS = ["django_mysql.E016"]
 
 #
 # General app parameters
@@ -32,7 +30,7 @@ SILENCED_SYSTEM_CHECKS = [
 # https://docs.djangoproject.com/en/4.2/ref/settings/#std:setting-DEBUG
 #
 
-DEBUG = os.environ.get('GRIMOIRELAB_DEBUG', 'False').lower() in ('true', '1')
+DEBUG = os.environ.get("GRIMOIRELAB_DEBUG", "False").lower() in ("true", "1")
 
 #
 # ALLOWED_HOST protects the site against CSRF attacks.
@@ -42,12 +40,12 @@ DEBUG = os.environ.get('GRIMOIRELAB_DEBUG', 'False').lower() in ('true', '1')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#allowed-hosts
 #
 
-if 'GRIMOIRELAB_ALLOWED_HOST' in os.environ:
-    ALLOWED_HOSTS = os.environ['GRIMOIRELAB_ALLOWED_HOST'].split(',')
+if "GRIMOIRELAB_ALLOWED_HOST" in os.environ:
+    ALLOWED_HOSTS = os.environ["GRIMOIRELAB_ALLOWED_HOST"].split(",")
 else:
     ALLOWED_HOSTS = [
-        '127.0.0.1',
-        'localhost',
+        "127.0.0.1",
+        "localhost",
     ]
 
 #
@@ -60,13 +58,13 @@ else:
 # https://github.com/adamchainz/django-cors-headers#configuration
 #
 
-if 'GRIMOIRELAB_CORS_ALLOWED_ORIGINS' in os.environ:
-    CORS_ALLOWED_ORIGINS = os.environ['GRIMOIRELAB_CORS_ALLOWED_ORIGINS'].split(',')
-elif 'GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES' in os.environ:
-    CORS_ALLOWED_ORIGIN_REGEXES = os.environ['GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES'].split(',')
+if "GRIMOIRELAB_CORS_ALLOWED_ORIGINS" in os.environ:
+    CORS_ALLOWED_ORIGINS = os.environ["GRIMOIRELAB_CORS_ALLOWED_ORIGINS"].split(",")
+elif "GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES" in os.environ:
+    CORS_ALLOWED_ORIGIN_REGEXES = os.environ["GRIMOIRELAB_CORS_ALLOWED_ORIGIN_REGEXES"].split(",")
 else:
     CORS_ALLOWED_ORIGINS = [
-        'http://localhost:5173',
+        "http://localhost:5173",
     ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -78,7 +76,7 @@ CORS_ALLOW_CREDENTIALS = True
 # https://docs.djangoproject.com/en/4.2/ref/settings/#secret-key
 #
 
-SECRET_KEY = os.environ.get('GRIMOIRELAB_SECRET_KEY', 'fake-key')
+SECRET_KEY = os.environ.get("GRIMOIRELAB_SECRET_KEY", "fake-key")
 
 
 # Require authentication when using the API.
@@ -92,51 +90,51 @@ GRIMOIRELAB_AUTHENTICATION_REQUIRED = True
 #
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django_rq',
-    'corsheaders',
-    'rest_framework',
-    'grimoirelab.core.scheduler',
-    'grimoirelab.core.scheduler.tasks',
-    'grimoirelab.core.datasources',
-    'drf_spectacular',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django_rq",
+    "corsheaders",
+    "rest_framework",
+    "grimoirelab.core.scheduler",
+    "grimoirelab.core.scheduler.tasks",
+    "grimoirelab.core.datasources",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'grimoirelab.core.app.urls'
+ROOT_URLCONF = "grimoirelab.core.app.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'grimoirelab.core.app.wsgi.application'
+WSGI_APPLICATION = "grimoirelab.core.app.wsgi.application"
 
 
 #
@@ -147,14 +145,14 @@ WSGI_APPLICATION = 'grimoirelab.core.app.wsgi.application'
 #
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': os.environ.get('GRIMOIRELAB_DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('GRIMOIRELAB_DB_PORT', 3306),
-        'USER': os.environ.get('GRIMOIRELAB_DB_USER', 'root'),
-        'PASSWORD': os.environ.get('GRIMOIRELAB_DB_PASSWORD', ''),
-        'NAME': os.environ.get('GRIMOIRELAB_DB_DATABASE', 'grimoirelab_test'),
-        'OPTIONS': {'charset': 'utf8mb4'},
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "HOST": os.environ.get("GRIMOIRELAB_DB_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("GRIMOIRELAB_DB_PORT", 3306),
+        "USER": os.environ.get("GRIMOIRELAB_DB_USER", "root"),
+        "PASSWORD": os.environ.get("GRIMOIRELAB_DB_PASSWORD", ""),
+        "NAME": os.environ.get("GRIMOIRELAB_DB_DATABASE", "grimoirelab_test"),
+        "OPTIONS": {"charset": "utf8mb4"},
     }
 }
 
@@ -164,16 +162,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -185,7 +183,7 @@ AUTH_PASSWORD_VALIDATORS = [
 #
 #
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 USE_I18N = True
 
 #
@@ -193,7 +191,7 @@ USE_I18N = True
 #
 
 USE_TZ = True
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 #
 # GrimoireLab Logging
@@ -202,27 +200,27 @@ TIME_ZONE = 'UTC'
 #
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '[{asctime}] {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "[{asctime}] {message}",
+            "style": "{",
         },
-        'verbose': {
-            'format': '[{asctime} - {levelname} - {name}] {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+        "verbose": {
+            "format": "[{asctime} - {levelname} - {name}] {message}",
+            "style": "{",
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }
 
@@ -233,39 +231,37 @@ LOGGING = {
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 #
 
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'templates/static'
-]
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "templates/static"]
 
 # UI static files will be copied to the next path when
 # 'collectstatic' is run.
 # If you are serving these files in a dedicated server, you will
 # need to copy them to their final destination.
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 # MEDIA_URL is only needed when DEBUG is set to True.
 # Modify this URL if you want to run the server in developer mode.
 
-MEDIA_URL = 'http://media.localhost/'
+MEDIA_URL = "http://media.localhost/"
 
 
 # Use this variable to upload static files to a cloud storage.
 # Current supported cloud platforms are: GCP
 
-if 'GRIMOIRELAB_STATICFILES_STORAGE' in os.environ:
-    if os.environ['GRIMOIRELAB_STATICFILES_STORAGE'].lower() == 'gcp':
+if "GRIMOIRELAB_STATICFILES_STORAGE" in os.environ:
+    if os.environ["GRIMOIRELAB_STATICFILES_STORAGE"].lower() == "gcp":
         STORAGES = {
             "staticfiles": {
                 "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
-                "OPTIONS": {
-                    "bucket_name": os.environ['GRIMOIRELAB_GCP_BUCKET_NAME']
-                }
+                "OPTIONS": {"bucket_name": os.environ["GRIMOIRELAB_GCP_BUCKET_NAME"]},
             }
         }
     else:
-        raise ValueError(f"'{os.environ['GRIMOIRELAB_STATICFILES_STORAGE']}' storage is not supported")
+        raise ValueError(
+            f"'{os.environ['GRIMOIRELAB_STATICFILES_STORAGE']}' storage is not supported"
+        )
 
 
 #
@@ -274,24 +270,22 @@ if 'GRIMOIRELAB_STATICFILES_STORAGE' in os.environ:
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 #
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Django REST Framework settings
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 100,
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 100,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'grimoirelab.core.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "grimoirelab.core.permissions.IsAuthenticated",
     ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 #
@@ -308,13 +302,13 @@ REST_FRAMEWORK = {
 # https://github.com/rq/django-rq
 #
 
-GRIMOIRELAB_Q_EVENTIZER_JOBS = os.environ.get('GRIMOIRELAB_Q_EVENTIZER_JOBS', 'eventizer_jobs')
+GRIMOIRELAB_Q_EVENTIZER_JOBS = os.environ.get("GRIMOIRELAB_Q_EVENTIZER_JOBS", "eventizer_jobs")
 
 _RQ_DATABASE = {
-    'HOST': os.environ.get('GRIMOIRELAB_REDIS_HOST', '127.0.0.1'),
-    'PORT': os.environ.get('GRIMOIRELAB_REDIS_PORT', 6379),
-    'PASSWORD': os.environ.get('GRIMOIRELAB_REDIS_PASSWORD', ''),
-    'DB': os.environ.get('GRIMOIRELAB_REDIS_DB', 0),
+    "HOST": os.environ.get("GRIMOIRELAB_REDIS_HOST", "127.0.0.1"),
+    "PORT": os.environ.get("GRIMOIRELAB_REDIS_PORT", 6379),
+    "PASSWORD": os.environ.get("GRIMOIRELAB_REDIS_PASSWORD", ""),
+    "DB": os.environ.get("GRIMOIRELAB_REDIS_DB", 0),
 }
 
 RQ_QUEUES = {
@@ -322,41 +316,46 @@ RQ_QUEUES = {
     GRIMOIRELAB_Q_EVENTIZER_JOBS: _RQ_DATABASE,
 }
 
-GRIMOIRELAB_EVENTS_STREAM_NAME = os.environ.get('GRIMOIRELAB_EVENTS_STREAM_NAME',
-                                                'events')
+GRIMOIRELAB_EVENTS_STREAM_NAME = os.environ.get("GRIMOIRELAB_EVENTS_STREAM_NAME", "events")
 # Maximum events in Redis stream before dropping. Consumers must process events
 # faster than production to avoid loss. Default max size is 1M events (~2.5GB Git events).
 # Adjust for memory constraints.
-GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH = int(os.environ.get('GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH',
-                                                          1 * 10 ** 6))
+GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH = int(
+    os.environ.get("GRIMOIRELAB_EVENTS_STREAM_MAX_LENGTH", 1 * 10**6)
+)
 
 RQ = {
-    'JOB_CLASS': 'grimoirelab.core.scheduler.jobs.GrimoireLabJob',
-    'WORKER_CLASS': 'grimoirelab.core.scheduler.worker.GrimoireLabWorker',
+    "JOB_CLASS": "grimoirelab.core.scheduler.jobs.GrimoireLabJob",
+    "WORKER_CLASS": "grimoirelab.core.scheduler.worker.GrimoireLabWorker",
 }
 
 #
 # Task default configuration
 #
 
-GRIMOIRELAB_JOB_INTERVAL = int(os.environ.get('GRIMOIRELAB_JOB_INTERVAL', 60 * 60 * 2))
-GRIMOIRELAB_JOB_MAX_RETRIES = int(os.environ.get('GRIMOIRELAB_JOB_MAX_RETRIES', 5))
-GRIMOIRELAB_JOB_RESULT_TTL = int(os.environ.get('GRIMOIRELAB_JOB_RESULT_TTL', 300))
-GRIMOIRELAB_JOB_TIMEOUT = int(os.environ.get('GRIMOIRELAB_JOB_TIMEOUT', -1))
+GRIMOIRELAB_JOB_INTERVAL = int(os.environ.get("GRIMOIRELAB_JOB_INTERVAL", 60 * 60 * 2))
+GRIMOIRELAB_JOB_MAX_RETRIES = int(os.environ.get("GRIMOIRELAB_JOB_MAX_RETRIES", 5))
+GRIMOIRELAB_JOB_RESULT_TTL = int(os.environ.get("GRIMOIRELAB_JOB_RESULT_TTL", 300))
+GRIMOIRELAB_JOB_TIMEOUT = int(os.environ.get("GRIMOIRELAB_JOB_TIMEOUT", -1))
 
-GRIMOIRELAB_GIT_STORAGE_PATH = os.environ.get('GRIMOIRELAB_GIT_PATH', '~/.perceval')
+GRIMOIRELAB_GIT_STORAGE_PATH = os.environ.get("GRIMOIRELAB_GIT_PATH", "~/.perceval")
 
 #
 # Archivist configuration
 #
 GRIMOIRELAB_ARCHIVIST = {
-    'STORAGE_URL': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_URL', 'https://admin:admin@localhost:9200'),
-    'STORAGE_USERNAME': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_USERNAME', ''),
-    'STORAGE_PASSWORD': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_PASSWORD', ''),
-    'STORAGE_INDEX': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_INDEX', 'events'),
-    'STORAGE_VERIFY_CERT': os.environ.get('GRIMOIRELAB_ARCHIVIST_STORAGE_VERIFY_CERT', 'False').lower() in ('true', '1'),
-    'BLOCK_TIMEOUT': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT', 60000)),
-    'BULK_SIZE': int(os.environ.get('GRIMOIRELAB_ARCHIVIST_BULK_SIZE', 100)),
+    "STORAGE_URL": os.environ.get(
+        "GRIMOIRELAB_ARCHIVIST_STORAGE_URL", "https://admin:admin@localhost:9200"
+    ),
+    "STORAGE_USERNAME": os.environ.get("GRIMOIRELAB_ARCHIVIST_STORAGE_USERNAME", ""),
+    "STORAGE_PASSWORD": os.environ.get("GRIMOIRELAB_ARCHIVIST_STORAGE_PASSWORD", ""),
+    "STORAGE_INDEX": os.environ.get("GRIMOIRELAB_ARCHIVIST_STORAGE_INDEX", "events"),
+    "STORAGE_VERIFY_CERT": os.environ.get(
+        "GRIMOIRELAB_ARCHIVIST_STORAGE_VERIFY_CERT", "False"
+    ).lower()
+    in ("true", "1"),
+    "BLOCK_TIMEOUT": int(os.environ.get("GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT", 60000)),
+    "BULK_SIZE": int(os.environ.get("GRIMOIRELAB_ARCHIVIST_BULK_SIZE", 100)),
 }
 
 #
@@ -375,7 +374,4 @@ SESSION_SAVE_EVERY_REQUEST = True
 # https://drf-spectacular.readthedocs.io/en/latest/settings.html
 #
 
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'GrimoireLab API',
-    'VERSION': '0.0.1'
-}
+SPECTACULAR_SETTINGS = {"TITLE": "GrimoireLab API", "VERSION": "0.0.1"}

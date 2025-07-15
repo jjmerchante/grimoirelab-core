@@ -46,18 +46,22 @@ class GrimoireLabJob(rq.job.Job):
     """
 
     # Default packages to log
-    PACKAGES_TO_LOG = [__name__, 'chronicler', 'perceval', 'rq']
+    PACKAGES_TO_LOG = [__name__, "chronicler", "perceval", "rq"]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._loggers = self.PACKAGES_TO_LOG
-        self.meta['log'] = []
-        self.meta['progress'] = None
+        self.meta["log"] = []
+        self.meta["progress"] = None
 
     @classmethod
-    def create(cls, func: FunctionReferenceType,
-               loggers: list[str] | None = None,
-               *args, **kwargs) -> GrimoireLabJob:
+    def create(
+        cls,
+        func: FunctionReferenceType,
+        loggers: list[str] | None = None,
+        *args,
+        **kwargs,
+    ) -> GrimoireLabJob:
         """Creates a new GrimoireLabJob instance.
 
         :param loggers: list of packages or modules to log; by default,
@@ -68,7 +72,10 @@ class GrimoireLabJob(rq.job.Job):
         # Make sure meta parameters are initialized.
         # If not given, they will be overridden on the initialization
         # of the Job class parent.
-        kwargs['meta'] = {'log': [], 'progress': None}
+        kwargs["meta"] = {
+            "log": [],
+            "progress": None,
+        }
         job = super().create(func, *args, **kwargs)
         job._loggers = loggers if loggers else job.PACKAGES_TO_LOG
 
@@ -78,25 +85,25 @@ class GrimoireLabJob(rq.job.Job):
     def progress(self) -> Any:
         """Returns the progress of the job."""
 
-        return self.meta.get('progress', None)
+        return self.meta.get("progress", None)
 
     @progress.setter
     def progress(self, value: Any) -> None:
         """Set the progress of the job."""
 
-        self.meta['progress'] = value
+        self.meta["progress"] = value
         self.save_meta()
 
     @property
     def log(self) -> list[dict[str, Any]] | None:
         """Returns the log of the job."""
 
-        return self.meta.get('log', [])
+        return self.meta.get("log", [])
 
     def add_log(self, log: dict[str, Any]) -> None:
         """Add a log entry."""
 
-        self.meta['log'].append(log)
+        self.meta["log"].append(log)
         self.save_meta()
 
     def _add_log_handler(self):
@@ -136,6 +143,7 @@ class JobLogHandler(logging.StreamHandler):
 
     :param job: job to store the logs
     """
+
     def __init__(self, job: GrimoireLabJob) -> None:
         logging.StreamHandler.__init__(self)
         self.job = job
@@ -146,9 +154,9 @@ class JobLogHandler(logging.StreamHandler):
         :param record: log record to emit
         """
         log = {
-            'created': record.created,
-            'msg': self.format(record),
-            'module': record.module,
-            'level': self.level,
+            "created": record.created,
+            "msg": self.format(record),
+            "module": record.module,
+            "level": self.level,
         }
         self.job.add_log(log)

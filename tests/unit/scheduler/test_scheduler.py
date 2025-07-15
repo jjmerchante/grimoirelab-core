@@ -31,7 +31,8 @@ from grimoirelab.core.scheduler.models import (
     Task,
     SchedulerStatus,
     register_task_model,
-    GRIMOIRELAB_TASK_MODELS)
+    GRIMOIRELAB_TASK_MODELS,
+)
 from grimoirelab.core.scheduler.scheduler import (
     schedule_task,
     cancel_task,
@@ -39,7 +40,7 @@ from grimoirelab.core.scheduler.scheduler import (
     reschedule_task,
     _enqueue_task,
     _on_success_callback,
-    _on_failure_callback
+    _on_failure_callback,
 )
 
 from ..base import GrimoireLabTestCase
@@ -48,7 +49,7 @@ from ..base import GrimoireLabTestCase
 class SchedulerTestTask(Task):
     """Class for testing purposes"""
 
-    TASK_TYPE = 'test_task'
+    TASK_TYPE = "test_task"
 
     def prepare_job_parameters(self):
         return self.task_args
@@ -58,12 +59,13 @@ class SchedulerTestTask(Task):
 
     @property
     def default_job_queue(self):
-        return 'testing'
+        return "testing"
 
     @staticmethod
     def job_function(*args, **kwargs):
         def add_numbers(a, b):
             return a + b
+
         return add_numbers(*args, **kwargs)
 
     @staticmethod
@@ -71,6 +73,7 @@ class SchedulerTestTask(Task):
         def on_success(job, connection, result, *args, **kwargs):
             job_db = find_job(job.id)
             job_db.save_run(SchedulerStatus.COMPLETED, progress=result)
+
         return on_success(*args, **kwargs)
 
     @staticmethod
@@ -78,13 +81,14 @@ class SchedulerTestTask(Task):
         def on_failure(job, connection, t, value, traceback):
             job_db = find_job(job.id)
             job_db.save_run(SchedulerStatus.FAILED, progress=t)
+
         return on_failure(*args, **kwargs)
 
 
 class OnSuccessCallbackTestTask(Task):
     """Class for testing on success callback calls"""
 
-    TASK_TYPE = 'callback_test_task'
+    TASK_TYPE = "callback_test_task"
 
     def prepare_job_parameters(self):
         return self.task_args
@@ -94,12 +98,13 @@ class OnSuccessCallbackTestTask(Task):
 
     @property
     def default_job_queue(self):
-        return 'testing'
+        return "testing"
 
     @staticmethod
     def job_function(*args, **kwargs):
         def add_numbers(a, b):
             return a + b
+
         return add_numbers(*args, **kwargs)
 
     @staticmethod
@@ -114,7 +119,7 @@ class OnSuccessCallbackTestTask(Task):
 class OnFailureCallbackTestTask(Task):
     """Class for testing on failure callback calls"""
 
-    TASK_TYPE = 'failure_test_task'
+    TASK_TYPE = "failure_test_task"
 
     def prepare_job_parameters(self):
         return self.task_args
@@ -124,7 +129,7 @@ class OnFailureCallbackTestTask(Task):
 
     @property
     def default_job_queue(self):
-        return 'testing'
+        return "testing"
 
     @staticmethod
     def job_function(*args, **kwargs):
@@ -145,7 +150,7 @@ class TestScheduleTask(GrimoireLabTestCase):
 
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
-        task_class, job_class = register_task_model('test_task', SchedulerTestTask)
+        task_class, job_class = register_task_model("test_task", SchedulerTestTask)
 
         def cleanup_test_model():
             with django.db.connection.schema_editor() as schema_editor:
@@ -163,13 +168,13 @@ class TestScheduleTask(GrimoireLabTestCase):
         """A task is enqueued and a job is created and executed"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
         # Enqueue the task
         enqueued_at = grimoirelab_toolkit.datetime.datetime_utcnow()
-        task = schedule_task('test_task', task_args)
+        task = schedule_task("test_task", task_args)
 
         # Check if a new job is created and the task is enqueued
         self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
@@ -177,7 +182,7 @@ class TestScheduleTask(GrimoireLabTestCase):
 
         # Run the job
         before_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
-        worker = django_rq.workers.get_worker('testing')
+        worker = django_rq.workers.get_worker("testing")
         processed = worker.work(burst=True, with_scheduler=True)
         after_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
 
@@ -195,17 +200,16 @@ class TestScheduleTask(GrimoireLabTestCase):
         """Task parameters are correctly set"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
         task = schedule_task(
-            'test_task', task_args,
-            job_interval=360, job_max_retries=10, burst=True
+            "test_task", task_args, job_interval=360, job_max_retries=10, burst=True
         )
 
         # Check initial state of the task
-        self.assertEqual(task.task_id, f'grimoire:task:{task.uuid}')
+        self.assertEqual(task.task_id, f"grimoire:task:{task.uuid}")
         self.assertEqual(task.task_args, task_args)
         self.assertEqual(task.job_interval, 360)
         self.assertEqual(task.job_max_retries, 10)
@@ -215,13 +219,13 @@ class TestScheduleTask(GrimoireLabTestCase):
         """A task is enqueued and a job is created and executed using _enqueue_task"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         task = SchedulerTestTask.create_task(task_args, 360, 10)
 
         # Check initial state of the task
-        self.assertEqual(task.task_id, f'grimoire:task:{task.uuid}')
+        self.assertEqual(task.task_id, f"grimoire:task:{task.uuid}")
         self.assertEqual(task.status, SchedulerStatus.NEW)
         self.assertEqual(task.task_args, task_args)
         self.assertEqual(task.job_interval, 360)
@@ -235,7 +239,7 @@ class TestScheduleTask(GrimoireLabTestCase):
         # Check if a new job is created and the task is enqueued
         self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
         self.assertEqual(job.job_num, 1)
-        self.assertEqual(job.queue, 'testing')
+        self.assertEqual(job.queue, "testing")
         self.assertEqual(job.task, task)
         self.assertGreaterEqual(job.scheduled_at, enqueued_at)
 
@@ -264,7 +268,7 @@ class TestScheduleTask(GrimoireLabTestCase):
         self.assertGreater(job.started_at, before_run_call_dt)
         self.assertLess(job.started_at, job.finished_at)
 
-    @unittest.mock.patch('django_rq.get_queue')
+    @unittest.mock.patch("django_rq.get_queue")
     def test_error_enqueuing_task(self, mock_get_queue):
         """An exception is raised when an error occurs enqueuing the task"""
 
@@ -272,8 +276,8 @@ class TestScheduleTask(GrimoireLabTestCase):
 
         with self.assertRaisesRegex(Exception, "Error getting queue"):
             task_args = {
-                'a': 1,
-                'b': 2,
+                "a": 1,
+                "b": 2,
             }
             task = SchedulerTestTask.create_task(task_args, 360, 10)
             _enqueue_task(task, scheduled_at=None)
@@ -284,11 +288,9 @@ class TestMaintainTasks(GrimoireLabTestCase):
 
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
-        task_class_sched, job_class_sched = register_task_model(
-            'test_task', SchedulerTestTask
-        )
+        task_class_sched, job_class_sched = register_task_model("test_task", SchedulerTestTask)
         task_class_callback, job_class_callback = register_task_model(
-            'callback_test_task', OnSuccessCallbackTestTask
+            "callback_test_task", OnSuccessCallbackTestTask
         )
 
         def cleanup_test_model():
@@ -311,12 +313,12 @@ class TestMaintainTasks(GrimoireLabTestCase):
         """Tasks with inconsistent state are re-scheduled"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
-        task1 = schedule_task('test_task', task_args)
-        task2 = schedule_task('test_task', task_args)
+        task1 = schedule_task("test_task", task_args)
+        task2 = schedule_task("test_task", task_args)
 
         # Delete one of the jobs manually to create the inconsistent state
         job_db = task2.jobs.first()
@@ -353,11 +355,11 @@ class TestMaintainTasks(GrimoireLabTestCase):
         """Tasks with multiple finished jobs are re-scheduled"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
-        task = schedule_task('callback_test_task', task_args, job_interval=0)
+        task = schedule_task("callback_test_task", task_args, job_interval=0)
         worker = django_rq.workers.get_worker(task.default_job_queue)
         worker.work(burst=True, with_scheduler=True)
         worker.work(burst=True, with_scheduler=True)
@@ -392,12 +394,12 @@ class TestMaintainTasks(GrimoireLabTestCase):
         """Tasks with inconsistent state with expired scheduled time are re-scheduled with current time"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
         before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
-        task = schedule_task('test_task', task_args)
+        task = schedule_task("test_task", task_args)
         before_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
 
         # Delete job manually to create the inconsistent state
@@ -422,8 +424,8 @@ class TestMaintainTasks(GrimoireLabTestCase):
         """Tasks with inconsistent state are re-scheduled keeping the same scheduled time"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         schedule_time = datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)
 
@@ -451,7 +453,7 @@ class TestCancelTask(GrimoireLabTestCase):
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
         self.task_class, self.job_class = register_task_model(
-            'callback_test_task', OnSuccessCallbackTestTask
+            "callback_test_task", OnSuccessCallbackTestTask
         )
 
         def cleanup_test_model():
@@ -470,14 +472,14 @@ class TestCancelTask(GrimoireLabTestCase):
         """A task is correctly canceled, including jobs"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
-        task1 = schedule_task('callback_test_task', task_args)
-        task2 = schedule_task('callback_test_task', task_args)
+        task1 = schedule_task("callback_test_task", task_args)
+        schedule_task("callback_test_task", task_args)
 
         # Run the job
-        worker = django_rq.workers.get_worker('testing')
+        worker = django_rq.workers.get_worker("testing")
         worker.work(burst=True, with_scheduler=True)
 
         # Check jobs after execution
@@ -485,9 +487,7 @@ class TestCancelTask(GrimoireLabTestCase):
 
         # Two jobs were created for task1:
         # one finished and other is scheduled
-        uuids = [
-            job.uuid for job in self.job_class.objects.filter(task=task1).all()
-        ]
+        uuids = [job.uuid for job in self.job_class.objects.filter(task=task1).all()]
         self.assertEqual(len(uuids), 2)
 
         for job_uuid in uuids:
@@ -515,16 +515,16 @@ class TestCancelTask(GrimoireLabTestCase):
     def test_no_task_found(self):
         """An exception is raised when the task doesn't exist"""
 
-        schedule_task('callback_test_task', {})
+        schedule_task("callback_test_task", {})
 
         with self.assertRaises(NotFoundError):
-            cancel_task('non-existent-task-uuid')
+            cancel_task("non-existent-task-uuid")
 
 
 class TestRescheduleTask(GrimoireLabTestCase):
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
-        task_class, job_class = register_task_model('test_task', SchedulerTestTask)
+        task_class, job_class = register_task_model("test_task", SchedulerTestTask)
 
         def cleanup_test_model():
             with django.db.connection.schema_editor() as schema_editor:
@@ -542,13 +542,13 @@ class TestRescheduleTask(GrimoireLabTestCase):
         """Test a task is rescheduled correctly"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
         # Enqueue the task
         enqueued_at = grimoirelab_toolkit.datetime.datetime_utcnow()
-        task = schedule_task('test_task', task_args)
+        task = schedule_task("test_task", task_args)
 
         # Check if a new job is created and the task is enqueued
         self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
@@ -556,7 +556,7 @@ class TestRescheduleTask(GrimoireLabTestCase):
 
         # Run the job
         before_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
-        worker = django_rq.workers.get_worker('testing')
+        worker = django_rq.workers.get_worker("testing")
         processed = worker.work(burst=True, with_scheduler=True)
         after_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
 
@@ -581,7 +581,7 @@ class TestRescheduleTask(GrimoireLabTestCase):
 
         # Run the job
         before_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
-        worker = django_rq.workers.get_worker('testing')
+        worker = django_rq.workers.get_worker("testing")
         processed = worker.work(burst=True, with_scheduler=True)
         after_run_call_dt = grimoirelab_toolkit.datetime.datetime_utcnow()
 
@@ -600,16 +600,16 @@ class TestRescheduleTask(GrimoireLabTestCase):
 
         # Enqueue the task
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         first_schedule_time = datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)
 
         task = SchedulerTestTask.create_task(task_args, 360, 10)
-        job_db = _enqueue_task(task, scheduled_at=first_schedule_time)
+        _enqueue_task(task, scheduled_at=first_schedule_time)
 
         # Check initial state of the task
-        self.assertEqual(task.task_id, f'grimoire:task:{task.uuid}')
+        self.assertEqual(task.task_id, f"grimoire:task:{task.uuid}")
         self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
         self.assertEqual(task.scheduled_at, first_schedule_time)
 
@@ -627,8 +627,8 @@ class TestRescheduleTask(GrimoireLabTestCase):
 
         # Enqueue the task
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
 
         task = SchedulerTestTask.create_task(task_args, 360, 10)
@@ -651,14 +651,14 @@ class TestRescheduleTask(GrimoireLabTestCase):
 
         # Check if the task is rescheduled
         task.refresh_from_db()
-        job_db = task.jobs.order_by('-scheduled_at').first()
+        job_db = task.jobs.order_by("-scheduled_at").first()
 
         self.assertEqual(task.status, SchedulerStatus.ENQUEUED)
         self.assertEqual(job_db.status, SchedulerStatus.ENQUEUED)
         self.assertGreater(task.scheduled_at, scheduled_date)
 
         # Run the job
-        worker = django_rq.workers.get_worker('testing')
+        worker = django_rq.workers.get_worker("testing")
         processed = worker.work(burst=True, with_scheduler=True)
 
         self.assertEqual(processed, True)
@@ -677,7 +677,7 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
         self.task_class, self.job_class = register_task_model(
-            'callback_test_task', OnSuccessCallbackTestTask
+            "callback_test_task", OnSuccessCallbackTestTask
         )
 
         def cleanup_test_model():
@@ -696,8 +696,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         """The success callback re-schedules the task"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         task = OnSuccessCallbackTestTask.create_task(task_args, 360, 10)
         job = _enqueue_task(task, scheduled_at=None)
@@ -733,8 +733,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         """Task is not re-scheduled when burst mode is on"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         task = OnSuccessCallbackTestTask.create_task(task_args, 360, 10, burst=True)
         job = _enqueue_task(task, scheduled_at=None)
@@ -751,7 +751,7 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         # No new job was created
         self.assertEqual(self.job_class.objects.count(), 1)
 
-    @unittest.mock.patch('grimoirelab.core.scheduler.scheduler.datetime_utcnow')
+    @unittest.mock.patch("grimoirelab.core.scheduler.scheduler.datetime_utcnow")
     def test_interval_between_jobs(self, mock_utcnow):
         """Task is re-scheduled to run after the given interval"""
 
@@ -759,8 +759,8 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         mock_utcnow.return_value = dt
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         job_interval = 3600
 
@@ -788,7 +788,7 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
 class OnFailureNoRetryTestTask(Task):
     """Class for testing on failure callback calls with no retry"""
 
-    TASK_TYPE = 'no_retry_test_task'
+    TASK_TYPE = "no_retry_test_task"
 
     def prepare_job_parameters(self):
         return self.task_args
@@ -798,7 +798,7 @@ class OnFailureNoRetryTestTask(Task):
 
     @property
     def default_job_queue(self):
-        return 'testing'
+        return "testing"
 
     @staticmethod
     def job_function(*args, **kwargs):
@@ -820,7 +820,7 @@ class TestOnFailureCallback(GrimoireLabTestCase):
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
         self.task_class, self.job_class = register_task_model(
-            'failure_test_task', OnFailureCallbackTestTask
+            "failure_test_task", OnFailureCallbackTestTask
         )
 
         def cleanup_test_model():
@@ -839,8 +839,8 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         """The failure callback re-schedules the task"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         task = OnFailureCallbackTestTask.create_task(task_args, 360, 10)
         job = _enqueue_task(task, scheduled_at=None)
@@ -877,8 +877,8 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         """The task is not re-scheduled after a number of tries"""
 
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         max_tries = 3
         task = OnFailureCallbackTestTask.create_task(task_args, 0, max_tries)
@@ -902,9 +902,7 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         """The task can't be retried"""
 
         # Register the class to test retrying
-        task_class, job_class = register_task_model(
-            'no_retry_test_task', OnFailureNoRetryTestTask
-        )
+        task_class, job_class = register_task_model("no_retry_test_task", OnFailureNoRetryTestTask)
 
         with django.db.connection.schema_editor() as schema_editor:
             schema_editor.create_model(task_class)
@@ -912,8 +910,8 @@ class TestOnFailureCallback(GrimoireLabTestCase):
 
         # Schedule the task
         task_args = {
-            'a': 1,
-            'b': 2,
+            "a": 1,
+            "b": 2,
         }
         max_tries = 3
         task = OnFailureNoRetryTestTask.create_task(task_args, 0, max_tries)

@@ -33,6 +33,7 @@ class BaseError(Exception):
     Derived classes can overwrite the error message declaring ``message``
     property.
     """
+
     code = CODE_BASE_ERROR
     message = "GrimoireLab core unknown error"
 
@@ -55,7 +56,7 @@ class AlreadyExistsError(BaseError):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.element = kwargs['element']
+        self.element = kwargs["element"]
 
 
 class NotFoundError(BaseError):
@@ -66,7 +67,7 @@ class NotFoundError(BaseError):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.element = kwargs['element']
+        self.element = kwargs["element"]
 
 
 class TaskRegistryError(BaseError):

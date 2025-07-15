@@ -25,6 +25,7 @@ class IsAuthenticated(BasePermission):
     Allows access only to authenticated users.
     When `GRIMOIRELAB_AUTHENTICATION_REQUIRED` setting is False it always has permissions.
     """
+
     def has_permission(self, request, view):
         if not settings.GRIMOIRELAB_AUTHENTICATION_REQUIRED:
             return True
