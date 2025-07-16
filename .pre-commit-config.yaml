@@ -1,11 +1,11 @@
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.12.3
+  rev: 3d44372123ca5e8617fdb65d9f11facd159b9e95 # v0.12.3
   hooks:
     - id: ruff-check
     - id: ruff-format
 - repo: https://github.com/rbubley/mirrors-prettier
-  rev: v3.6.2
+  rev: 5ba47274f9b181bce26a5150a725577f3c336011 # v3.6.2
   hooks:
     - id: prettier
       files: ^ui/
