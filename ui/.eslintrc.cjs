@@ -10,9 +10,10 @@ module.exports = {
     'plugin:vue/vue3-essential',
     'plugin:vue/vue3-strongly-recommended',
     'eslint:recommended',
-    '@vue/eslint-config-prettier',
     'plugin:storybook/recommended',
-    'plugin:storybook/recommended'
+    'plugin:storybook/recommended',
+    '@vue/eslint-config-prettier',
+    'plugin:prettier/recommended'
   ],
   overrides: [
     {

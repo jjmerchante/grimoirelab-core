@@ -12,7 +12,7 @@
       @keyup.enter="$emit('filters:update', filters)"
     />
     <v-progress-linear v-if="isLoading" color="primary" indeterminate />
-    <div v-if="projects.length > 0" :class="{'pt-1': !isLoading}">
+    <div v-if="projects.length > 0" :class="{ 'pt-1': !isLoading }">
       <tree-folder :projects class="border" />
       <v-pagination
         value="page"
