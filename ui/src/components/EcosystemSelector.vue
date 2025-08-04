@@ -12,12 +12,12 @@
       </v-btn>
     </template>
     <v-list
-      v-model:selected="selected"
+      :selected="selected"
       bg-color="primary"
       density="comfortable"
       dark
       nav
-      @update:selected="selectEcosystem(selected, true)"
+      @click:select="({ id }) => selectEcosystem(id, true)"
     >
       <v-list-item v-for="ecosystem in ecosystems" :key="ecosystem.name" :value="ecosystem.name">
         <v-list-item-title>{{ ecosystem.title || ecosystem.name }}</v-list-item-title>
@@ -78,13 +78,13 @@ export default {
         console.log(error)
       }
     },
-    selectEcosystem(selected, emit) {
-      if (!selected[0]) return
-      this.selected = selected
-      Cookies.set('gl_ecosystem', selected[0], { sameSite: 'strict', expires: 14 })
-      this.store.$patch({ ecosystem: selected[0] })
+    selectEcosystem(id, emit) {
+      if (!id) return
+      this.selected = [id]
+      Cookies.set('gl_ecosystem', id, { sameSite: 'strict', expires: 14 })
+      this.store.$patch({ ecosystem: id })
       if (emit) {
-        this.$emit('ecosystem:selected', selected[0])
+        this.$emit('ecosystem:selected', id)
       }
     }
   },
