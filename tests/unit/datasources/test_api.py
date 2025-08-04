@@ -24,14 +24,15 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from grimoirelab.core.datasources.models import Ecosystem, Project, Repository, DataSet
+from grimoirelab.core.datasources.models import (
+    Ecosystem,
+    Project,
+    Repository,
+    DataSet,
+    INVALID_NAME_ERROR,
+)
 from grimoirelab.core.datasources.utils import generate_uuid
 from grimoirelab.core.scheduler.tasks.models import EventizerTask
-
-INVALID_NAME_ERROR = (
-    "Field may only contain alphanumeric characters or hyphens. "
-    "It may only start with a letter and cannot end with a hyphen."
-)
 
 
 class EcosystemListApiTest(APITestCase):
@@ -296,6 +297,27 @@ class ProjectListApiTest(APITestCase):
             response_json["name"],
             ["Ecosystem 'ecosystem1' already has a project named 'example-project'"],
         )
+
+    def test_valid_name_numbers(self):
+        """Test that numbers are allowed in the name"""
+
+        Ecosystem.objects.create(name="ecosystem1")
+        url = reverse("projects-list", kwargs={"ecosystem_name": "ecosystem1"})
+        data = {
+            "name": "example1",
+            "title": "Example Project 1",
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "example1")
+
+        data = {
+            "name": "example-2",
+            "title": "Example Project 2",
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "example-2")
 
     def test_invalid_name(self):
         """Test that non alphanumeric or hyphen characters are invalid"""
