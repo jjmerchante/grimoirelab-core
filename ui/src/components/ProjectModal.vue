@@ -37,7 +37,12 @@
         </v-row>
         <v-row>
           <v-col>
-            <project-selector v-model="parent_project" label="Parent project (optional)" />
+            <project-selector
+              v-model="parent_project"
+              label="Parent project (optional)"
+              :error-messages="errors.parent_project"
+              :exclude="id"
+            />
           </v-col>
         </v-row>
       </v-card-text>
@@ -89,6 +94,11 @@ export default {
       type: String,
       required: false,
       default: ''
+    },
+    id: {
+      type: Number,
+      required: false,
+      default: null
     }
   },
   data() {

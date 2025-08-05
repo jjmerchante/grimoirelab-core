@@ -41,6 +41,11 @@ export default {
       type: String,
       required: false,
       default: 'Project'
+    },
+    exclude: {
+      type: Number,
+      required: false,
+      default: null
     }
   },
   methods: {
@@ -55,7 +60,7 @@ export default {
       const filters = value ? { term: value } : {}
       const response = await this.getProjects(this.ecosystem, filters)
       if (response) {
-        this.items = response.data.results
+        this.items = response.data.results.filter((item) => item.id !== this.exclude)
         this.isLoading = false
       }
     },
