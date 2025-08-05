@@ -1,5 +1,9 @@
 <template>
-  <v-dialog :model-value="isOpen" max-width="500">
+  <v-dialog
+    :model-value="isOpen"
+    max-width="500"
+    @update:model-value="(value) => $emit('update:isOpen', value)"
+  >
     <v-card class="pa-3">
       <v-card-title class="headline">
         {{ edit ? 'Edit project' : 'Create project' }}

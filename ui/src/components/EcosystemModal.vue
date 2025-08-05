@@ -1,5 +1,9 @@
 <template>
-  <v-dialog :model-value="isOpen" max-width="500">
+  <v-dialog
+    :model-value="isOpen"
+    max-width="500"
+    @update:model-value="(value) => store.$patch({ isOpen: value })"
+  >
     <v-card class="pa-3">
       <v-card-title class="headline"> Create ecosystem </v-card-title>
       <v-card-text>
