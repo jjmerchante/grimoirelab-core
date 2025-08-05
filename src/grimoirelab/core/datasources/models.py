@@ -32,6 +32,9 @@ from ..models import (
     MAX_SIZE_NAME_FIELD,
 )
 
+INVALID_NAME_ERROR = """Field may only contain lowercase letters, numbers or hyphens.
+    It may only start with a letter and cannot end with a hyphen."""
+
 
 class Repository(BaseModel):
     """Base class for repositories
@@ -51,10 +54,8 @@ class Repository(BaseModel):
 
 
 validate_name = RegexValidator(
-    r"^[a-z]+(?:-[a-z0-9]+)*$",
-    (
-        "Field may only contain alphanumeric characters or hyphens. It may only start with a letter and cannot end with a hyphen."
-    ),
+    r"^[a-z]+(?:-*[a-z0-9]+)*$",
+    (INVALID_NAME_ERROR),
     "invalid",
 )
 
