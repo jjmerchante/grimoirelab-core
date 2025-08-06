@@ -79,6 +79,7 @@
       :create-project="createProject"
       :edit-project="editProject"
       :parent="modal.parentProject"
+      :id="project.id"
       @project:update="fetchProject(projectName)"
       @projects:update="fetchChildren(projectName)"
     />

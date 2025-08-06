@@ -114,6 +114,11 @@ class ProjectDetailSerializer(ProjectSerializer):
     parent_project = ParentProjectField()
     subprojects = ProjectSerializer(many=True, read_only=True)
 
+    def validate_parent_project(self, value):
+        if self.instance.id == value.id:
+            raise serializers.ValidationError("A project cannot be nested inside itself")
+        return value
+
 
 class EcosystemSerializer(serializers.ModelSerializer):
     class Meta:

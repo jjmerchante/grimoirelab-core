@@ -602,6 +602,23 @@ class ProjectDetailApiTest(APITestCase):
         self.assertEqual(response.data["parent_project"]["title"], "Parent project")
         self.assertEqual(response.data["parent_project"]["subprojects"], ["example-project"])
 
+    def test_update_project_invalid_parent_project(self):
+        """Test that it raises an error if project and parent project are the same"""
+
+        ecosystem = Ecosystem.objects.create(name="ecosystem1", title="Ecosystem 1")
+        project = Project.objects.create(name="example-project", ecosystem=ecosystem)
+        url = reverse(
+            "projects-detail", kwargs={"ecosystem_name": "ecosystem1", "name": "example-project"}
+        )
+        data = {"parent_project": project.id}
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response_json = response.json()
+        self.assertEqual(
+            response_json["parent_project"], ["A project cannot be nested inside itself"]
+        )
+
     def test_update_project_invalid_name(self):
         """Test that it returns an error if the updated name is invalid"""
 
