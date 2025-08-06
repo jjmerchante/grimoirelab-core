@@ -76,4 +76,11 @@ const getTaskArgs = (datasource, category, url) => {
   }
 }
 
-export { guessDatasource, getTaskArgs }
+const generateSlug = (fromText, toFieldRef) => {
+  if (fromText && toFieldRef.modelValue?.length === 0) {
+    const slug = fromText.trim().replace(/\s+/g, '-').toLowerCase()
+    toFieldRef.$emit('update:modelValue', slug)
+  }
+}
+
+export { guessDatasource, getTaskArgs, generateSlug }
