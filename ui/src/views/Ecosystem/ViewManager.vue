@@ -49,6 +49,8 @@ export default {
         return 'SBoMView'
       } else if (this.repo) {
         return 'RepoView'
+      } else {
+        return 'ListView'
       }
     }
   }

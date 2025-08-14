@@ -15,7 +15,14 @@
     </form-dialog>
 
     <v-card
-      :to="{ name: 'loadSbom' }"
+      :to="{
+        name: 'ecosystems',
+        query: {
+          ecosystem: $route.query.ecosystem,
+          project: $route.query.project,
+          create: 'sbom'
+        }
+      }"
       title="Load SPDX SBoM file"
       subtitle="Load repositories from an SBoM file in SPDX format"
       prepend-icon="mdi-file-upload-outline"
@@ -28,19 +35,19 @@
   </v-container>
 </template>
 <script>
-import { mapState } from 'pinia'
 import { API } from '@/services/api'
-import { useEcosystemStore } from '@/store'
 import FormDialog from '@/components/FormDialog.vue'
 
 export default {
   name: 'NewRepo',
   components: { FormDialog },
   computed: {
-    project() {
-      return this.$route?.params?.id
+    ecosystem() {
+      return this.$route.query?.ecosystem
     },
-    ...mapState(useEcosystemStore, ['selectedEcosystem'])
+    project() {
+      return this.$route.query?.project
+    }
   },
   data() {
     return {
@@ -54,11 +61,15 @@ export default {
   methods: {
     async createRepository(formData) {
       try {
-        const response = await API.repository.create(this.selectedEcosystem, this.project, formData)
+        const response = await API.repository.create(this.ecosystem, this.project, formData)
         if (response.status === 201) {
           this.$router.push({
-            name: 'repository',
-            params: { id: this.project, uuid: response.data.uuid }
+            name: 'ecosystems',
+            query: {
+              ecosystem: this.ecosystem,
+              project: this.project,
+              repo: response.data.uuid
+            }
           })
         }
       } catch (error) {

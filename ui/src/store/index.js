@@ -21,13 +21,9 @@ export const useUserStore = defineStore('user', {
 
 export const useEcosystemStore = defineStore('ecosystem', {
   state: () => ({
-    ecosystem: Cookies.get('gl_ecosystem'),
-    list: null,
     isOpen: false
   }),
   getters: {
-    selectedEcosystem: (state) => state.ecosystem,
-    ecosystems: (state) => state.list,
     isModalOpen: (state) => state.isOpen
   }
 })

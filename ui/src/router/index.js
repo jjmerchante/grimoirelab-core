@@ -63,98 +63,22 @@ const router = createRouter({
       ]
     },
     {
-      path: '/projects',
-      name: 'projects',
+      path: '/ecosystems',
+      name: 'ecosystems',
+      component: () => import('../views/Ecosystem/ViewManager.vue'),
+      props: (route) => ({
+        ecosystem: route.query.ecosystem,
+        project: route.query.project,
+        repo: route.query.repo,
+        create: route.query.create
+      }),
       meta: {
         requiresAuth: true,
         breadcrumb: {
-          title: 'Projects',
-          to: { name: 'projects' }
+          type: 'query',
+          order: ['ecosystem', 'project', 'repo']
         }
-      },
-      redirect: {
-        name: 'projectList'
-      },
-      children: [
-        {
-          path: '',
-          name: 'projectList',
-          component: () => import('../views/Project/ListView.vue')
-        },
-        {
-          path: ':id',
-          meta: {
-            breadcrumb: {
-              to: { name: 'project' },
-              title: '',
-              param: 'id'
-            }
-          },
-          children: [
-            {
-              path: '',
-              name: 'project',
-              component: () => import('../views/Project/DetailView.vue')
-            },
-            {
-              path: 'repositories',
-              name: 'repositories',
-              redirect: {
-                name: 'newRepoList'
-              },
-              children: [
-                {
-                  path: 'new',
-                  name: 'newRepoList',
-                  meta: {
-                    breadcrumb: {
-                      title: 'New repository',
-                      to: { name: 'newRepo' }
-                    }
-                  },
-                  redirect: {
-                    name: 'newRepo'
-                  },
-                  children: [
-                    {
-                      path: '',
-                      name: 'newRepo',
-                      component: () => import('../views/Repo/NewRepo.vue')
-                    },
-                    {
-                      path: 'sbom',
-                      name: 'loadSbom',
-                      meta: {
-                        breadcrumb: {
-                          title: 'Load from SBoM',
-                          to: { name: 'loadSbom' }
-                        }
-                      },
-                      component: () => import('../views/Repo/LoadSbom.vue')
-                    }
-                  ]
-                },
-                {
-                  path: ':uuid',
-                  name: 'repository',
-                  component: () => import('../views/Repo/DetailView.vue'),
-                  meta: {
-                    breadcrumb: {
-                      to: { name: 'repository' },
-                      title: 'Repository'
-                    }
-                  }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          path: 'ecosystem/new',
-          name: 'noEcosystem',
-          component: () => import('../views/Ecosystem/EmptyView.vue')
-        }
-      ]
+      }
     },
     {
       path: '/signin',

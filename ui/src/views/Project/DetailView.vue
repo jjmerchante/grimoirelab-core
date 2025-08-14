@@ -40,7 +40,17 @@
             </template>
             <v-list-item-title>Add project</v-list-item-title>
           </v-list-item>
-          <v-list-item :to="{ name: 'newRepoList' }">
+          <v-list-item
+            :exact="true"
+            :to="{
+              name: 'ecosystems',
+              query: {
+                ecosystem: route.query.ecosystem,
+                project: projectName,
+                create: 'repo'
+              }
+            }"
+          >
             <template #prepend>
               <v-icon size="small">mdi-source-branch-plus</v-icon>
             </template>
@@ -90,7 +100,6 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute, onBeforeRouteUpdate } from 'vue-router'
 import { API } from '@/services/api'
-import { useEcosystemStore } from '@/store'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import TreeList from '@/components/TreeList/TreeList.vue'
 import ProjectModal from '@/components/ProjectModal.vue'
@@ -115,12 +124,11 @@ const {
 
 const router = useRouter()
 const route = useRoute()
-const store = useEcosystemStore()
 const { modalProps, confirmDelete } = useModal()
 const project = ref({})
 
 const projectName = computed(() => {
-  return route.params.id
+  return route.query.project
 })
 const noMatches = computed(() => {
   return !isLoading.value && children.value.length === 0
@@ -128,7 +136,7 @@ const noMatches = computed(() => {
 
 async function fetchProject(name) {
   try {
-    const response = await API.project.get(store.ecosystem, name)
+    const response = await API.project.get(route.query.ecosystem, name)
     if (response.status === 200) {
       project.value = response.data
       fetchChildren(name, 1)
@@ -144,23 +152,17 @@ async function fetchProject(name) {
 
 async function deleteProject(name) {
   try {
-    await API.project.delete(store.ecosystem, name)
-    router.replace({ name: 'projects' })
+    await API.project.delete(route.query.ecosystem, name)
+    router.replace({ name: 'ecosystems', query: { ecosystem: route.query.ecosystem } })
   } catch (error) {
     const message = error.response?.data.detail ? error.response.data.detail : error.toString()
     Object.assign(alert.value, { isOpen: true, text: message })
   }
 }
 
-store.$subscribe((mutation) => {
-  if (mutation.storeId === 'ecosystem' && mutation.payload.ecosystem) {
-    router.replace({ name: 'projects' })
-  }
-})
-
 onBeforeRouteUpdate(async (to, from) => {
-  if (to.params?.id !== from.params.id) {
-    fetchProject(to.params.id)
+  if (to.query.project && to.query.project !== from.query.project) {
+    fetchProject(to.query.project)
   }
 })
 

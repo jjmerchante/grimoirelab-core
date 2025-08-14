@@ -77,9 +77,7 @@
   </v-container>
 </template>
 <script>
-import { mapState } from 'pinia'
 import { API } from '@/services/api'
-import { useEcosystemStore } from '@/store'
 import { formatDate } from '@/utils/dates'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import useModal from '@/composables/useModal'
@@ -88,12 +86,14 @@ export default {
   components: { ConfirmModal },
   computed: {
     project() {
-      return this.$route.params?.id
+      return this.$route.query?.project
     },
     uuid() {
-      return this.$route.params?.uuid
+      return this.$route.query?.repo
     },
-    ...mapState(useEcosystemStore, ['selectedEcosystem'])
+    ecosystem() {
+      return this.$route.query?.ecosystem
+    }
   },
   data() {
     return {
@@ -126,7 +126,7 @@ export default {
   methods: {
     async fetchRepo() {
       try {
-        const response = await API.repository.get(this.selectedEcosystem, this.project, this.uuid)
+        const response = await API.repository.get(this.ecosystem, this.project, this.uuid)
         this.repo = response.data
         response.data.categories.forEach((category) => {
           Object.assign(this.categories[this.repo.datasource_type][category.category], {
@@ -181,7 +181,7 @@ export default {
           uri: this.repo.uri,
           datasource_type: this.repo.datasource_type
         }
-        await API.repository.create(this.selectedEcosystem, this.project, data)
+        await API.repository.create(this.ecosystem, this.project, data)
       } catch (error) {
         Object.assign(this.snackbar, {
           open: true,
@@ -192,8 +192,11 @@ export default {
     },
     async deleteRepo() {
       try {
-        await API.repository.delete(this.selectedEcosystem, this.project, this.uuid)
-        this.$router.replace({ name: 'project', params: { id: this.project } })
+        await API.repository.delete(this.ecosystem, this.project, this.uuid)
+        this.$router.replace({
+          name: 'ecosystems',
+          query: { ecosystem: this.ecosystem, project: this.project }
+        })
       } catch (error) {
         const message = error.response?.data.detail ? error.response.data.detail : error.toString()
         Object.assign(alert.value, { isOpen: true, text: message })
