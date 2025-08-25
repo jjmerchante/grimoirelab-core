@@ -62,6 +62,7 @@ def _setup():
     _create_database()
     _setup_database()
     _install_static_files()
+    _create_system_user()
 
     click.secho("\nGrimoirelab configuration completed", fg="bright_cyan")
 
@@ -115,6 +116,23 @@ def _install_static_files():
     )
 
     click.echo()
+
+
+def _create_system_user():
+    """Create the system user for administration tasks. It has no password"""
+
+    system_user, created = get_user_model().objects.get_or_create(
+        username="system-user",
+        defaults={
+            "is_staff": False,
+            "is_superuser": False,
+            "is_active": True,
+        },
+    )
+    if created:
+        system_user.set_unusable_password()
+        system_user.save()
+        click.echo("System user created.")
 
 
 @admin.command()

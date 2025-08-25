@@ -265,3 +265,49 @@ def archivists(workers: int, verbose: bool, burst: bool):
         verify_certs=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_VERIFY_CERT"],
     )
     pool.start(burst=burst)
+
+
+@run.command()
+@click.option(
+    "--workers",
+    default=20,
+    show_default=True,
+    help="Number of extractors to run.",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Enable verbose mode.",
+)
+@click.option(
+    "--burst",
+    is_flag=True,
+    default=False,
+    help="Process all the events and exit.",
+)
+def collect_identities(workers: int, verbose: bool, burst: bool):
+    """Start a pool of workers that extracts identities from events.
+
+    The workers will fetch events from a redis stream.
+    Identities will be extracted and stored in SortingHat.
+
+    The number of workers can be defined with the parameter '--workers'.
+    To enable verbose mode, use the '--verbose' flag.
+
+    If the '--burst' flag is enabled, the pool will process all the events
+    and exit.
+    """
+    from grimoirelab.core.consumers.identities.consumer import SortingHatConsumerPool
+
+    _wait_redis_ready()
+
+    pool = SortingHatConsumerPool(
+        # Consumer parameters
+        stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+        group_name="sortinghat-identities",
+        num_consumers=workers,
+        stream_block_timeout=settings.GRIMOIRELAB_ARCHIVIST["BLOCK_TIMEOUT"],
+        verbose=verbose,
+    )
+    pool.start(burst=burst)
