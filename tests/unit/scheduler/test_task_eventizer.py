@@ -102,7 +102,7 @@ class TestChroniclerJob(GrimoireLabTestCase):
             ),
             ("16c99217dc3185c760cc64985271e2d5b2fbbe39", "org.grimoirelab.events.git.commit"),
             (
-                "ef282262cd85859b7ff2230828da6314b8230263",
+                "d34572db2652b86d14e887aa6a469d32a1c1c705",
                 "org.grimoirelab.events.git.file.replaced",
             ),
             ("81df8221af2e63715ad3ff1f5fd41f9a1f2723e4", "org.grimoirelab.events.git.commit"),
@@ -112,14 +112,14 @@ class TestChroniclerJob(GrimoireLabTestCase):
             ("e8460b1df2147e217e12cfa7404191af589f62cb", "org.grimoirelab.events.git.commit"),
             ("93ea3e9c6b1f77f00894b1c361d7ee16a0490299", "org.grimoirelab.events.git.file.deleted"),
             (
-                "526635a03e351ba1e45964c45b695906a17f5493",
+                "52e52ed98daa1665af78f8fda9da1915ddb89649",
                 "org.grimoirelab.events.git.file.replaced",
             ),
             ("e5ff829d3f1bacf6a6d3e36cd996a1308351f9a5", "org.grimoirelab.events.git.commit"),
             ("5ee17ed5caf8cf3fc33e50ab3b46e2fe66d5cd71", "org.grimoirelab.events.git.file.added"),
             ("caf05717b6c53143bd29a2140eb9c043aaefb255", "org.grimoirelab.events.git.commit"),
             (
-                "1c837b8c685112760eb5829c3da7c495f67e7c44",
+                "7bbe861347f594692c9bb72c2bf0c95a8b252f69",
                 "org.grimoirelab.events.git.file.replaced",
             ),
             ("1375b60d3c23ac9b81da92523e4144abc4489d4c", "org.grimoirelab.events.git.commit"),
