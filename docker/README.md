@@ -12,15 +12,16 @@ our [website](https://chaoss.github.io/grimoirelab/).
 
 ### Quickstart 
 
-You can use this image to run grimoirelab core scheduler and some basic
-commands. You might need a MySQL and Redis server containers running:
+This image allows you to run GrimoireLab Core Scheduler and basic commands.
+Make sure MySQL and Valkey (a Redis-compatible key-value store) containers are
+running.
 
 ```
 docker network create grimoire-net
 
 docker run --rm -d --net grimoire-net --name mysqldb -e 'MYSQL_ROOT_PASSWORD=root' mariadb:latest
 
-docker run --rm -d --net grimoire-net --name redisdb  redis:latest redis-server --appendonly yes
+docker run --rm -d --net grimoire-net --name valkeydb  valkey/valkey:latest valkey-server --appendonly yes
 ```
 
 #### Configure the database
