@@ -121,6 +121,8 @@ class ProjectDetailSerializer(ProjectSerializer):
 
 
 class EcosystemSerializer(serializers.ModelSerializer):
+    description = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Ecosystem
         fields = [

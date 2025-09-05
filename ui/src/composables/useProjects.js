@@ -38,7 +38,7 @@ export function useProjects() {
     Object.assign(modal.value, {
       isOpen: true,
       edit: false,
-      name: null,
+      name: '',
       title: null
     })
   }
