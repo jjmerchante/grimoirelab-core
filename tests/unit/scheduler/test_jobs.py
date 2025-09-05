@@ -52,7 +52,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         job = GrimoireLabJob.create(func=do_something, connection=self.conn)
 
         self.assertEqual(job.progress, None)
-        self.assertEqual(job.log, [])
+        self.assertEqual(job.job_log, [])
 
     def test_init(self):
         """Tests whether the job initialization is correct"""
@@ -60,7 +60,7 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         job = GrimoireLabJob(connection=self.conn)
 
         self.assertEqual(job.progress, None)
-        self.assertEqual(job.log, [])
+        self.assertEqual(job.job_log, [])
 
     def test_progress(self):
         """Tests the progress property"""
@@ -80,8 +80,8 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
 
         grimoire_job.add_log({"msg": "This is a log message"})
 
-        self.assertEqual(len(grimoire_job.log), 1)
-        self.assertEqual(grimoire_job.log[0]["msg"], "This is a log message")
+        self.assertEqual(len(grimoire_job.job_log), 1)
+        self.assertEqual(grimoire_job.job_log[0]["msg"], "This is a log message")
 
     def test_job(self):
         """Tests if the job is run and logs are generated"""
@@ -95,8 +95,8 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         job = q.enqueue_job(job)
 
         self.assertEqual(job.return_value(), "Job executed successfully")
-        self.assertEqual(len(job.log), 1)
-        self.assertEqual(job.log[0]["msg"], "This is a log message")
+        self.assertEqual(len(job.job_log), 1)
+        self.assertEqual(job.job_log[0]["msg"], "This is a log message")
 
         # Check if log handler is removed after execution
         self.assertNotIn(job._job_logger, logging.getLogger(__name__).handlers)
@@ -113,9 +113,9 @@ class TestGrimoireLabJob(GrimoireLabTestCase):
         job = q.enqueue_job(job)
 
         self.assertEqual(job.return_value(), None)
-        self.assertEqual(len(job.log), 2)
-        self.assertEqual(job.log[0]["msg"], "This is a log message")
-        self.assertRegex(job.log[1]["msg"], "Traceback")
+        self.assertEqual(len(job.job_log), 2)
+        self.assertEqual(job.job_log[0]["msg"], "This is a log message")
+        self.assertRegex(job.job_log[1]["msg"], "Traceback")
 
 
 class TestJobLogHandler(GrimoireLabTestCase):
@@ -128,7 +128,7 @@ class TestJobLogHandler(GrimoireLabTestCase):
         meta_handler = JobLogHandler(job)
 
         self.assertEqual(meta_handler.job, job)
-        self.assertListEqual(meta_handler.job.log, [])
+        self.assertListEqual(meta_handler.job.job_log, [])
 
     def test_emit(self):
         """Tests whether messages are logged correctly"""
@@ -145,8 +145,8 @@ class TestJobLogHandler(GrimoireLabTestCase):
         logger.info("This is an info message")
 
         # Check if the logs are saved in the job 'meta' field
-        self.assertEqual(len(job.log), 3)
-        self.assertEqual(sorted(list(job.log[0].keys())), ["created", "level", "module", "msg"])
-        self.assertRegex(job.log[0]["msg"], "error")
-        self.assertRegex(job.log[1]["msg"], "warning")
-        self.assertRegex(job.log[2]["msg"], "info")
+        self.assertEqual(len(job.job_log), 3)
+        self.assertEqual(sorted(list(job.job_log[0].keys())), ["created", "level", "module", "msg"])
+        self.assertRegex(job.job_log[0]["msg"], "error")
+        self.assertRegex(job.job_log[1]["msg"], "warning")
+        self.assertRegex(job.job_log[2]["msg"], "info")

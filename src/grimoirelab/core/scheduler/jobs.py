@@ -95,7 +95,7 @@ class GrimoireLabJob(rq.job.Job):
         self.save_meta()
 
     @property
-    def log(self) -> list[dict[str, Any]] | None:
+    def job_log(self) -> list[dict[str, Any]] | None:
         """Returns the log of the job."""
 
         return self.meta.get("log", [])

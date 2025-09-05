@@ -265,8 +265,8 @@ def _schedule_job(
             f=task.job_function,
             result_ttl=settings.GRIMOIRELAB_JOB_RESULT_TTL,
             job_timeout=settings.GRIMOIRELAB_JOB_TIMEOUT,
-            on_success=task.on_success_callback,
-            on_failure=task.on_failure_callback,
+            on_success=rq.job.Callback(task.on_success_callback),
+            on_failure=rq.job.Callback(task.on_failure_callback),
             job_id=job.uuid,
             **job_args,
         )
