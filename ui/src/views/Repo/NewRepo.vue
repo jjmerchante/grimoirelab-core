@@ -29,6 +29,21 @@
       variant="outlined"
     ></v-card>
 
+    <v-card
+      :to="{
+        name: 'ecosystems',
+        query: {
+          ecosystem: $route.query.ecosystem,
+          project: $route.query.project,
+          create: 'github'
+        }
+      }"
+      title="GitHub"
+      subtitle="Load repositories from a GitHub user or organization"
+      prepend-icon="mdi-github"
+      variant="outlined"
+    ></v-card>
+
     <v-snackbar v-model="snackbar.open" :color="snackbar.color">
       {{ snackbar.text }}
     </v-snackbar>

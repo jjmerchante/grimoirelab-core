@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <div>
     <h1 class="text-h6 my-4">Load SBoM</h1>
     <div v-if="!hasLoaded">
       <p class="mb-2">
@@ -37,68 +37,30 @@
           density="comfortable"
           size="small"
           variant="text"
-          @click="hasLoaded = false"
+          @click="reloadForm"
         >
           <v-icon start>mdi-refresh</v-icon>
           Load another file
         </v-btn>
       </p>
-      <div v-if="urls.length > 0">
-        <repository-table :repositories="urls" @update:selected="form.selected = $event">
-        </repository-table>
-        <p class="text-subtitle-2 mt-6 mb-4">Schedule</p>
-        <div class="mb-6">
-          <interval-selector v-model="form.interval"></interval-selector>
-        </div>
-        <v-alert
-          v-model="alert.isOpen"
-          :text="alert.text"
-          :icon="alert.icon"
-          :color="alert.color"
-          density="compact"
-          class="mb-6"
-        >
-        </v-alert>
-        <v-btn :loading="loading" color="primary" @click="createTasks"> Schedule </v-btn>
-      </div>
     </div>
-  </v-container>
+  </div>
 </template>
 <script>
-import { API } from '@/services/api'
-import { guessDatasource, getTaskArgs } from '@/utils/datasources'
-import IntervalSelector from '@/components/IntervalSelector.vue'
-import RepositoryTable from '@/components/RepositoryTable.vue'
+import { guessDatasource } from '@/utils/datasources'
 
 export default {
   name: 'LoadSbom',
-  components: { RepositoryTable, IntervalSelector },
+  emits: ['update:repos'],
   data() {
     return {
       urls: [],
-      error: '',
       loading: false,
       hasLoaded: false,
       form: {
         error: '',
-        files: [],
-        interval: '604800',
-        selected: []
-      },
-      alert: {
-        isOpen: false,
-        text: '',
-        color: 'error',
-        icon: 'mdi-warning'
+        files: []
       }
-    }
-  },
-  computed: {
-    project() {
-      return this.$route?.query?.project
-    },
-    ecosystem() {
-      return this.$route?.query?.ecosystem
     }
   },
   methods: {
@@ -141,41 +103,7 @@ export default {
       this.urls = urls
       this.loading = false
       this.hasLoaded = true
-      this.alert.isOpen = false
-    },
-    async createTasks() {
-      if (this.form.selected.length === 0) return
-      this.loading = true
-
-      try {
-        await Promise.all(
-          this.form.selected.map((task) => {
-            const { datasource_type, category, uri } = getTaskArgs(
-              task.datasource,
-              task.category,
-              task.url
-            )
-            API.repository.create(this.ecosystem, this.project, {
-              datasource_type,
-              category,
-              uri,
-              scheduler: {
-                job_interval: this.form.interval,
-                job_max_retries: 3
-              }
-            })
-          })
-        )
-        this.$router.push({ name: 'tasks' })
-      } catch (error) {
-        Object.assign(this.alert, {
-          isOpen: true,
-          color: 'error',
-          text: error.message,
-          icon: 'mdi-alert-outline'
-        })
-      }
-      this.loading = false
+      this.$emit('update:repos', this.urls)
     },
     async validateSPDX(file) {
       if (file.type !== 'application/json') {
@@ -187,23 +115,13 @@ export default {
       if (!parsedFile.SPDXID || !parsedFile.spdxVersion) {
         throw new Error('The file is not in a valid SPDX format.')
       }
+    },
+    reloadForm() {
+      this.$emit('update:repos', [])
+      this.hasLoaded = false
+      this.urls = []
+      this.form.files = []
     }
   }
 }
 </script>
-<style lang="scss" scoped>
-.v-form {
-  max-width: 600px;
-}
-
-:deep(.v-table) {
-  background-color: transparent;
-
-  .v-table__wrapper {
-    background-color: rgb(var(--v-theme-surface));
-    border: thin solid rgba(0, 0, 0, 0.08);
-    border-radius: 4px;
-    max-height: 55vh;
-  }
-}
-</style>

@@ -32,6 +32,14 @@
         </div>
       </div>
     </template>
+    <template #[`item.data-table-select`]="{ internalItem, isSelected, toggleSelect }">
+      <v-checkbox-btn
+        :model-value="isSelected(internalItem)"
+        :indeterminate="isRowIndeterminate(internalItem, isSelected)"
+        color="primary"
+        @update:model-value="selectRow(internalItem, isSelected, toggleSelect)"
+      ></v-checkbox-btn>
+    </template>
     <template #[`item.url`]="{ item }">
       {{ item.url }}
       <v-chip v-if="item.fork" class="ml-2" color="primary" density="comfortable" size="small">
@@ -91,6 +99,11 @@
   </v-data-table-virtual>
 </template>
 <script>
+const enabledColumns = {
+  issue: 'has_issues',
+  pull_request: 'has_pull_requests'
+}
+
 export default {
   name: 'RepositoryTable',
   emits: ['update:selected'],
@@ -116,9 +129,9 @@ export default {
         { title: 'Pull Requests', value: 'pull_request' }
       ],
       selectedColumns: {
-        commit: true,
-        issue: true,
-        pull_request: true
+        commit: false,
+        issue: false,
+        pull_request: false
       },
       selected: [],
       filters: {
@@ -164,9 +177,9 @@ export default {
           acc.push({
             ...item,
             form: {
-              commit: true,
-              pull_request: item.has_pull_requests,
-              issue: item.has_issues
+              commit: false,
+              pull_request: false,
+              issue: false
             }
           })
         }
@@ -180,7 +193,30 @@ export default {
     areSomeSelected(column) {
       return (
         this.items.some((item) => item.form[column] === true) &&
-        !this.items.every((item) => item.form[column] === true)
+        !this.items.every(
+          (item) =>
+            item.form[column] === true || (enabledColumns[column] && !item[enabledColumns[column]])
+        )
+      )
+    },
+    selectRow(item, isSelected, toggleSelect) {
+      const value = !isSelected(item)
+      Object.keys(item.value.form).forEach((column) => {
+        if (!enabledColumns[column] || item.value[enabledColumns[column]]) {
+          item.value.form[column] = value
+        }
+      })
+      toggleSelect(item)
+    },
+    isRowIndeterminate(item, isSelected) {
+      return (
+        isSelected(item) &&
+        Object.values(item.value.form).some((value) => value === true) &&
+        !Object.keys(item.value.form).every(
+          (column) =>
+            item.value.form[column] === true ||
+            (enabledColumns[column] && !item.value[enabledColumns[column]])
+        )
       )
     }
   },
