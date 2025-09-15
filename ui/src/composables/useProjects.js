@@ -1,11 +1,11 @@
 import { provide, ref } from 'vue'
 import { API } from '@/services/api'
-import { useEcosystemStore } from '@/store'
+import { useRoute } from 'vue-router'
 import { useIsLoading } from '@/composables/loading'
 
 export function useProjects() {
   const { isLoading } = useIsLoading()
-  const store = useEcosystemStore()
+  const route = useRoute()
   const children = ref([])
   const pages = ref(0)
   const page = ref(1)
@@ -46,7 +46,7 @@ export function useProjects() {
   async function fetchChildren(project, currentPage, currentFilters = filters) {
     try {
       const params = Object.assign({ page: currentPage }, currentFilters.value)
-      const response = await API.project.getChildren(store.ecosystem, project, params)
+      const response = await API.project.getChildren(route.query.ecosystem, project, params)
       if (response.data.results) {
         children.value = response.data.results
         pages.value = response.data.total_pages
@@ -64,23 +64,27 @@ export function useProjects() {
   }
 
   async function fetchProjectChildren(project, params) {
-    const response = await API.project.getChildren(store.ecosystem, project, params)
+    const response = await API.project.getChildren(route.query.ecosystem, project, params)
     return response
   }
 
   async function createProject(name, title, parent_project) {
-    const response = await API.project.create(store.ecosystem, { name, title, parent_project })
+    const response = await API.project.create(route.query.ecosystem, {
+      name,
+      title,
+      parent_project
+    })
     return response
   }
 
   async function editProject(name, title, parent_project) {
     const data = { title, parent_project }
-    const response = await API.project.edit(store.ecosystem, name, data)
+    const response = await API.project.edit(route.query.ecosystem, name, data)
     return response
   }
 
   provide('getProjects', API.project.list)
-  provide('ecosystem', store.ecosystem)
+  provide('ecosystem', route.query.ecosystem)
 
   return {
     isLoading,

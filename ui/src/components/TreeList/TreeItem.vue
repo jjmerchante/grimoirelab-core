@@ -104,17 +104,19 @@ export default {
     link() {
       if (this.project.type === 'project') {
         return {
-          name: 'project',
-          params: {
-            id: this.project.name
+          name: 'ecosystems',
+          query: {
+            ecosystem: this.$route.query.ecosystem,
+            project: this.project.name
           }
         }
       } else {
         return {
-          name: 'repository',
-          params: {
-            id: this.parent.name,
-            uuid: this.project.uuid
+          name: 'ecosystems',
+          query: {
+            ecosystem: this.$route.query.ecosystem,
+            project: this.parent.name || this.$route.query.project,
+            repo: this.project.uuid
           }
         }
       }

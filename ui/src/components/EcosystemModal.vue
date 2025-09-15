@@ -63,13 +63,12 @@
   </v-dialog>
 </template>
 <script>
-import Cookies from 'js-cookie'
 import { useEcosystemStore } from '@/store'
 import { generateSlug } from '@/utils/datasources'
 
 export default {
   name: 'EcosystemModal',
-  emits: ['update:isOpen'],
+  emits: ['update:isOpen', 'update:ecosystem'],
   inject: ['createEcosystem'],
   props: {
     isOpen: {
@@ -92,14 +91,9 @@ export default {
       try {
         const response = await this.createEcosystem(this.form)
         if (response.status === 201) {
-          Cookies.set('gl_ecosystem', this.form.name, { sameSite: 'strict', expires: 14 })
-          this.store.$patch({
-            ecosystem: this.form.name,
-            isOpen: false,
-            list: [...this.store.list, this.form]
-          })
-          await this.$router.replace({ name: 'projects' })
-          this.$router.go()
+          this.store.$patch({ isOpen: false })
+          this.$emit('update:ecosystem')
+          this.$router.push({ name: 'ecosystems', query: { ecosystem: response.data.name } })
         }
       } catch (error) {
         this.errors = error.response.data

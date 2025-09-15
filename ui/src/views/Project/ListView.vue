@@ -41,9 +41,9 @@
   </v-container>
 </template>
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { API } from '@/services/api'
-import { useEcosystemStore } from '@/store'
 import TreeList from '@/components/TreeList/TreeList.vue'
 import ProjectModal from '@/components/ProjectModal.vue'
 import { useProjects } from '@/composables/useProjects'
@@ -59,7 +59,7 @@ const {
   fetchProjectChildren,
   createProject
 } = useProjects()
-const store = useEcosystemStore()
+const route = useRoute()
 const projects = ref([])
 
 const noMatches = computed(() => {
@@ -69,7 +69,7 @@ const noMatches = computed(() => {
 async function fetchProjects(currentPage, currentFilters = filters) {
   try {
     const params = Object.assign({ page: currentPage }, currentFilters.value)
-    const response = await API.project.list(store.ecosystem, params)
+    const response = await API.project.list(route.query.ecosystem, params)
     if (response.data.results) {
       projects.value = response.data.results.map((project) =>
         Object.assign(project, { type: 'project' })
@@ -88,13 +88,9 @@ function setFilters(newFilters) {
   fetchProjects(1, filters)
 }
 
-store.$subscribe((mutation) => {
-  if (mutation.storeId === 'ecosystem') {
-    fetchProjects()
-  }
-})
-
-onMounted(() => {
-  fetchProjects(page.value)
-})
+watch(
+  () => route.query.ecosystem,
+  async () => await fetchProjects(),
+  { immediate: true }
+)
 </script>

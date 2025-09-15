@@ -1,7 +1,7 @@
 import { client } from './client'
 
 export const ecosystem = {
-  list: () => client.get('/api/v1/ecosystems/'),
+  list: (params) => client.get('/api/v1/ecosystems/', { params }),
   create: (data) => client.post('/api/v1/ecosystems/', data)
 }
 

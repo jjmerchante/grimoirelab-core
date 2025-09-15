@@ -66,8 +66,6 @@
 </template>
 <script>
 import { API } from '@/services/api'
-import { mapState } from 'pinia'
-import { useEcosystemStore } from '@/store'
 import { guessDatasource, getTaskArgs } from '@/utils/datasources'
 import IntervalSelector from '@/components/IntervalSelector.vue'
 import RepositoryTable from '@/components/RepositoryTable.vue'
@@ -97,9 +95,11 @@ export default {
   },
   computed: {
     project() {
-      return this.$route?.params?.id
+      return this.$route?.query?.project
     },
-    ...mapState(useEcosystemStore, ['selectedEcosystem'])
+    ecosystem() {
+      return this.$route?.query?.ecosystem
+    }
   },
   methods: {
     async parseJSONFile(JSONFile) {
@@ -155,7 +155,7 @@ export default {
               task.category,
               task.url
             )
-            API.repository.create(this.selectedEcosystem, this.project, {
+            API.repository.create(this.ecosystem, this.project, {
               datasource_type,
               category,
               uri,

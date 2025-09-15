@@ -22,10 +22,13 @@ provide('createEcosystem', API.ecosystem.create)
         <ecosystem-selector
           v-if="user.isAuthenticated"
           :fetch-ecosystems="API.ecosystem.list"
-          @ecosystem:selected="$router.push({ name: 'projectList' })"
-          @ecosystem:missing="$router.replace({ name: 'noEcosystem' })"
+          ref="selector"
         />
-        <ecosystem-modal v-if="ecosystem.isModalOpen" :is-open="ecosystem.isModalOpen" />
+        <ecosystem-modal
+          v-if="ecosystem.isModalOpen"
+          :is-open="ecosystem.isModalOpen"
+          @update:ecosystem="$refs.selector.reloadList()"
+        />
       </template>
       <v-spacer></v-spacer>
       <user-dropdown v-if="user.isAuthenticated" :username="user.user" />
@@ -37,11 +40,20 @@ provide('createEcosystem', API.ecosystem.create)
       permanent
     >
       <v-list color="primary" density="compact">
-        <v-list-item :to="{ name: 'projects' }">
+        <v-list-item
+          v-if="$route.query.ecosystem"
+          :to="{ name: 'ecosystems', query: { ecosystem: $route.query.ecosystem } }"
+        >
           <template #prepend>
             <v-icon>mdi-folder-outline</v-icon>
           </template>
           <v-list-item-title>Projects</v-list-item-title>
+        </v-list-item>
+        <v-list-item v-else :to="{ name: 'ecosystems' }" value="ecosystems">
+          <template #prepend>
+            <v-icon>mdi-folder-multiple-outline</v-icon>
+          </template>
+          <v-list-item-title>Ecosystems</v-list-item-title>
         </v-list-item>
         <v-list-item :to="{ name: 'tasks' }">
           <template #prepend>
