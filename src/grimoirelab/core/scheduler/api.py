@@ -162,7 +162,7 @@ class EventizerJobLogsSerializer(serializers.ModelSerializer):
         if obj.status == SchedulerStatus.RUNNING:
             rq_job = django_rq.get_queue(obj.queue).fetch_job(obj.uuid)
             if rq_job:
-                return rq_job.log
+                return rq_job.job_log
         return obj.logs
 
 

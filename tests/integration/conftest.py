@@ -41,7 +41,7 @@ EVENTS_INDEX = "test_index"
 
 
 mysql = MySqlContainer("mariadb:latest", root_password="root").with_exposed_ports(3306)
-redis = RedisContainer().with_exposed_ports(6379)
+redis = RedisContainer("valkey/valkey:8").with_exposed_ports(6379)
 opensearch = OpenSearchContainer().with_exposed_ports(9200)
 
 

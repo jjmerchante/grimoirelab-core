@@ -73,7 +73,3 @@ django_rq.queues.get_redis_connection = FakeRedisConn()
 # This is only happening because we are running the tests with
 # custom test models that need to be registered several times.
 warnings.filterwarnings("ignore", message=r"Model .+ was already registered")
-
-# This is raised because fakeredis does not support the CLIENT SETNAME
-# command. This is not important for the tests.
-warnings.filterwarnings("ignore", message=r"CLIENT SETNAME command not supported")

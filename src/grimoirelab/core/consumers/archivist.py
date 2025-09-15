@@ -172,7 +172,7 @@ class OpenSearchArchivist(Consumer):
         """Create an index in the OpenSearch instance."""
 
         try:
-            self.client.indices.create(index, body=MAPPING)
+            self.client.indices.create(index=index, body=MAPPING)
         except RequestError as e:
             if e.error == "resource_already_exists_exception":
                 pass
