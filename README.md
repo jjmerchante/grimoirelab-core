@@ -31,6 +31,26 @@ whole list of dependencies in [pyproject.toml](pyproject.toml) file.
 There are several ways to install GrimoireLab core on your system: packages or
 source code using Poetry or pip.
 
+### mysql_config
+
+Before you install GrimoireLab core you might need to install `mysql_config`
+command. If you are using a Debian based distribution, this command can be
+found either in `libmysqlclient-dev` or `libmariadbclient-dev` packages
+(depending on if you are using MySQL or MariaDB database server). You can
+install these packages in your system with the next commands:
+
+* **MySQL**
+
+```
+$ apt install libmysqlclient-dev
+```
+
+* **MariaDB**
+
+```
+$ apt install libmariadbclient-dev-compat
+```
+
 ### PyPI
 
 GrimoireLab core can be installed using pip, a tool for installing Python
@@ -78,54 +98,95 @@ $ poetry shell
 $ grimoirelab
 Usage: grimoirelab [OPTIONS] COMMAND [ARGS]...
 
-  CHAOSS toolset for software development analytics
+  Toolset for software development analytics.
+
+  GrimoireLab is a set of tools and a platform to retrieve, analyze, and
+  provide insights about data coming from software development repositories.
+  With this command, you'll be able to configure and run its different
+  services.
+
+  It requires to pass a configuration file module using the Python path syntax
+  (e.g. grimoirelab.core.config.settings). Take into account the configuration
+  should be accessible by your PYTHON_PATH. You can also use the environment
+  variable GRIMOIRELAB_CONFIG to define the config location.
 
 Options:
-  --help  Show this message and exit.
+  --config TEXT  Configuration module in Python path syntax  [default:
+                 grimoirelab.core.config.settings]
+  --help         Show this message and exit.
 
 Commands:
-  config      GrimoireLab administration tool.
-  fetch-task  Scheduler commands.
-  queues      Manage the GrimoireLab Redis queues
-  run         Run a service.
+  admin  GrimoireLab administration tool.
+  run    Run a GrimoireLab service.
 ```
 
 ## Configuration
 
-The first step is to run a Redis server and a MySQL database that will be used
-for communicating components and storing results. Please refer to their
-documentation to know how to install and run them both.
-
-#### Configure the database
-```
-grimoirelab config setup
-```
-
-#### Run a scheduler worker
-```
-grimoirelab run scheduler-worker
-```
-
-#### Create a Git fetch task
-```
-grimoirelab fetch-task git https://github.com/chaoss/grimoirelab.git
-```
-
-#### Consume items from the queue
-```
-grimoirelab run test-perceval-consumer
-```
+The first step is to run a Redis server, a MySQL database and an OpenSearch 
+container that will be used for communicating components and storing results.
+Please refer to their documentation to know how to install and run them.
 
 ### Configuration variables
 
 By default, GrimoireLab runs using a configuration file defined at
 `grimoirelab.core.config.settings`. You can update that file or use
-environment variables.
+environment variables to override the default values.
+
+#### Configure the database
+
+This command will create the database tables and the initial admin user.
+
+```
+grimoirelab admin setup
+```
+
+#### Run eventizer workers
+
+Run the eventizer workers that will fetch data from the repositories
+and insert it into a Redis Stream.
+
+```
+grimoirelab run eventizers
+```
+
+#### Run archivist workers
+
+Run the archivist workers that will read data from the Redis Stream and
+store it into OpenSearch.
+
+```
+grimoirelab run archivists
+```
+
+### Run identities storage workers
+
+Run the identities storage workers that will read data from the Redis Stream
+and store it into SortingHat database.
+
+```
+grimoirelab run ushers
+```
+
+#### Run the backend API
+
+Run the backend API server that will provide a REST API to manage the
+repositories, jobs and identities.
+
+It also provides a web interface to manage the platform.
+
+```
+grimoirelab run server --dev
+```
 
 ## Running tests
 
-GrimoireLab core comes with a comprehensive list of unit tests
+GrimoireLab core comes with a comprehensive list of unit and integration tests.
+
+- Unitary tests requires a SQL database running (MySQL or MariaDB).
+
+- Integration tests uses testcontainers to spawn temporary containers (MariaDB,
+Valkey, and OpenSearch).
 
 ```
-(.venv)$ ./manage.py test --settings=config.settings.testing
+(.venv)$ pytest
 ```
