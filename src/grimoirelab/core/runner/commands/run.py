@@ -104,14 +104,36 @@ def server(ctx: Context, devel: bool):
     os.execvp("uwsgi", ("uwsgi",))
 
 
+def worker_options(workers=5, verbose=False, burst=False):
+    """Decorator to add common worker options to commands."""
+
+    def decorator(f):
+        f = click.option(
+            "--workers",
+            default=workers,
+            show_default=True,
+            help="Number of workers to run in the pool.",
+        )(f)
+        f = click.option(
+            "--verbose",
+            is_flag=True,
+            default=verbose,
+            help="Enable verbose mode.",
+        )(f)
+        f = click.option(
+            "--burst",
+            is_flag=True,
+            default=burst,
+            help="Process all the events and exit.",
+        )(f)
+        return f
+
+    return decorator
+
+
 @run.command()
-@click.option(
-    "--workers",
-    default=5,
-    show_default=True,
-    help="Number of workers to run in the pool.",
-)
-def eventizers(workers: int):
+@worker_options(workers=5)
+def eventizers(workers: int, verbose: bool, burst: bool):
     """Start a pool of eventizer workers.
 
     The workers on the pool will run tasks to fetch data from software
@@ -125,7 +147,11 @@ def eventizers(workers: int):
     in the configuration file.
     """
     django.core.management.call_command(
-        "rqworker-pool", settings.GRIMOIRELAB_Q_EVENTIZER_JOBS, num_workers=workers
+        "rqworker-pool",
+        settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
+        num_workers=workers,
+        burst=burst,
+        verbosity=3 if verbose else 1,
     )
 
 
@@ -172,7 +198,7 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
         except opensearchpy.exceptions.AuthorizationException:
             logging.error("Authorization failed. Check your credentials.")
             exit(1)
-        except opensearchpy.exceptions.ConnectionError:
+        except (opensearchpy.exceptions.ConnectionError, opensearchpy.exceptions.TransportError):
             logging.warning(
                 f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready."
             )
@@ -208,24 +234,7 @@ def _wait_redis_ready():
 
 
 @run.command()
-@click.option(
-    "--workers",
-    default=20,
-    show_default=True,
-    help="Number of archivists to run.",
-)
-@click.option(
-    "--verbose",
-    is_flag=True,
-    default=False,
-    help="Enable verbose mode.",
-)
-@click.option(
-    "--burst",
-    is_flag=True,
-    default=False,
-    help="Process all the events and exit.",
-)
+@worker_options(workers=20)
 def archivists(workers: int, verbose: bool, burst: bool):
     """Start a pool of archivists.
 
@@ -263,5 +272,34 @@ def archivists(workers: int, verbose: bool, burst: bool):
         index=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_INDEX"],
         bulk_size=settings.GRIMOIRELAB_ARCHIVIST["BULK_SIZE"],
         verify_certs=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_VERIFY_CERT"],
+    )
+    pool.start(burst=burst)
+
+
+@run.command()
+@worker_options(workers=20)
+def ushers(workers: int, verbose: bool, burst: bool):
+    """Start a pool of workers that store identities from events.
+
+    The workers will fetch events from a redis stream.
+    Identities will be stored in SortingHat.
+
+    The number of workers can be defined with the parameter '--workers'.
+    To enable verbose mode, use the '--verbose' flag.
+
+    If the '--burst' flag is enabled, the pool will process all the events
+    and exit.
+    """
+    from grimoirelab.core.consumers.identities import SortingHatConsumerPool
+
+    _wait_redis_ready()
+
+    pool = SortingHatConsumerPool(
+        # Consumer parameters
+        stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
+        group_name="sortinghat-identities",
+        num_consumers=workers,
+        stream_block_timeout=settings.GRIMOIRELAB_ARCHIVIST["BLOCK_TIMEOUT"],
+        verbose=verbose,
     )
     pool.start(burst=burst)

@@ -86,6 +86,11 @@ GRIMOIRELAB_AUTHENTICATION_REQUIRED = True
 
 
 #
+# Bot user, used to run some background tasks.
+#
+SYSTEM_BOT_USER = os.environ.get("GRIMOIRELAB_SYSTEM_BOT_USER", "grimoire-bot")
+
+#
 # Application definition - DO NOT MODIFY
 #
 
