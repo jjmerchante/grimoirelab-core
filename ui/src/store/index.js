@@ -11,10 +11,10 @@ export const useUserStore = defineStore('user', {
     isAuthenticated: (state) => !!state.username
   },
   actions: {
-    logOutUser() {
+    logOutUser(redirect) {
       this.username = null
       Cookies.remove('gl_user')
-      router.push({ name: 'signIn' })
+      router.push({ name: 'signIn', query: redirect })
     }
   }
 })

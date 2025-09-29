@@ -64,7 +64,7 @@ export default {
         }
         const response = await this.login(authDetails)
         if (response) {
-          this.$router.push({ name: 'home' })
+          this.$router.push(this.$route.query.redirect ?? { name: 'home' })
         }
       } catch (error) {
         if (error.response.data.detail) {
