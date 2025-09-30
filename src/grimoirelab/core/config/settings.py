@@ -86,6 +86,11 @@ GRIMOIRELAB_AUTHENTICATION_REQUIRED = True
 
 
 #
+# Bot user, used to run some background tasks.
+#
+SYSTEM_BOT_USER = os.environ.get("GRIMOIRELAB_SYSTEM_BOT_USER", "grimoire-bot")
+
+#
 # Application definition - DO NOT MODIFY
 #
 
@@ -103,6 +108,8 @@ INSTALLED_APPS = [
     "grimoirelab.core.scheduler.tasks",
     "grimoirelab.core.datasources",
     "drf_spectacular",
+    "graphene_django",
+    "sortinghat.core",
 ]
 
 MIDDLEWARE = [
@@ -375,3 +382,54 @@ SESSION_SAVE_EVERY_REQUEST = True
 #
 
 SPECTACULAR_SETTINGS = {"TITLE": "GrimoireLab API", "VERSION": "0.0.1"}
+
+#
+# Multi-tenant (not supported yet)
+#
+
+MULTI_TENANT = False
+
+
+# Require authentication when using the API.
+# You shouldn't deactivate this option unless you are debugging
+# the system or running it in a trusted and safe environment.
+
+SORTINGHAT_AUTHENTICATION_REQUIRED = True
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "graphql_jwt.backends.JSONWebTokenBackend",
+]
+
+#
+# Graphene - DO NOT MODIFY
+#
+
+GRAPHENE = {
+    "SCHEMA": "sortinghat.core.schema",
+    "MIDDLEWARE": [
+        "graphql_jwt.middleware.JSONWebTokenMiddleware",
+    ],
+}
+
+GRAPHQL_JWT = {"JWT_ALLOW_ANY_HANDLER": "sortinghat.core.middleware.allow_any"}
+
+#
+# API default page size
+#
+
+SORTINGHAT_API_PAGE_SIZE = 10
+
+#
+# genderize.io token, used only for gender recommendations
+#
+
+SORTINGHAT_GENDERIZE_API_KEY = os.environ.get("SORTINGHAT_GENDERIZE_API_KEY", None)
+
+#
+# Trusted data sources for matching by username
+#
+
+MATCH_TRUSTED_SOURCES = os.environ.get(
+    "SORTINGHAT_MATCH_TRUSTED_SOURCES", "github,gitlab,slack"
+).split(",")
