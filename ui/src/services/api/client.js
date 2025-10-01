@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '@/router'
 import { useUserStore } from '@/store'
 
 const AUTHENTICATION_ERROR = 'Authentication credentials were not provided.'
@@ -21,7 +22,10 @@ client.interceptors.response.use(
   function (error) {
     if (error.response.status === 403 && error.response.data.detail === AUTHENTICATION_ERROR) {
       const userStore = useUserStore()
-      userStore.logOutUser()
+      userStore.logOutUser({
+        redirect:
+          router.currentRoute?.value?.query?.redirect ?? router.currentRoute?.value?.fullPath
+      })
     }
     return Promise.reject(error)
   }
