@@ -20,6 +20,10 @@ import logging
 import multiprocessing
 import time
 
+from unittest.mock import MagicMock, patch
+
+import redis
+
 from grimoirelab.core.consumers.consumer import Consumer, Entry
 
 from ..base import GrimoireLabTestCase
@@ -231,3 +235,54 @@ class TestConsumer(GrimoireLabTestCase):
         for entry, expected_entry in zip(consumer_2.entries, expected_entries):
             self.assertEqual(entry.message_id.decode(), expected_entry.message_id)
             self.assertDictEqual(entry.event, expected_entry.event)
+
+    def test_consumer_exponential_backoff(self):
+        """Test whether the consumer implements exponential backoff on Redis connection errors"""
+
+        # Create a mock consumer instance
+        consumer = SampleConsumer(
+            connection=self.conn,
+            stream_name="test_stream",
+            consumer_group="test_group",
+            consumer_name="test_consumer",
+            stream_block_timeout=1000,
+            logging_level="DEBUG",
+        )
+
+        # Setup the mock for redis client to raise ConnectionError
+        consumer.recover_stream_entries = MagicMock(
+            side_effect=[
+                redis.exceptions.ConnectionError("fail 1"),
+                redis.exceptions.ConnectionError("fail 2"),
+                redis.exceptions.ConnectionError("fail 3"),
+                [],
+            ]
+        )  # Succeeds on 4th call
+
+        consumer.fetch_new_entries = MagicMock(return_value=[])
+        consumer.process_entries = MagicMock()
+        consumer.logger = MagicMock()
+
+        # Mock time.sleep to avoid real waiting
+        with patch("time.sleep") as sleep_mock:
+            try:
+                consumer.start(burst=False)
+            except StopIteration:
+                # the recover_stream_entries mock will eventually fail
+                pass
+
+            # Check that sleep was called with exponential backoff times
+            sleep_mock.assert_any_call(1)
+            sleep_mock.assert_any_call(2)
+            sleep_mock.assert_any_call(4)
+
+            # Check that the logger recorded the connection errors
+            consumer.logger.error.assert_any_call(
+                "Could not connect to Redis instance: fail 1 Retrying in 1 seconds..."
+            )
+            consumer.logger.error.assert_any_call(
+                "Could not connect to Redis instance: fail 2 Retrying in 2 seconds..."
+            )
+            consumer.logger.error.assert_any_call(
+                "Could not connect to Redis instance: fail 3 Retrying in 4 seconds..."
+            )

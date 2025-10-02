@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import typing
 
 from collections import namedtuple
@@ -36,6 +37,9 @@ if typing.TYPE_CHECKING:
 ENTRIES_READ_COUNT = 10
 RECOVER_IDLE_TIME = 300000  # 5 minutes (in ms)
 STREAM_BLOCK_TIMEOUT = 60000  # 1 minute (in ms)
+
+EXPONENTIAL_BACKOFF_FACTOR = 2
+MAX_CONNECTION_WAIT_TIME = 60
 
 
 Entry = namedtuple("Entry", ["message_id", "event"])
@@ -87,12 +91,23 @@ class Consumer:
 
         self._create_consumer_group()
 
+        connection_wait_time = 1
         while True:
-            recovered_entries = self.recover_stream_entries()
-            self.process_entries(recovered_entries, recovery=True)
+            try:
+                recovered_entries = self.recover_stream_entries()
+                self.process_entries(recovered_entries, recovery=True)
 
-            new_entries = self.fetch_new_entries()
-            self.process_entries(new_entries)
+                new_entries = self.fetch_new_entries()
+                self.process_entries(new_entries)
+            except redis.exceptions.ConnectionError as conn_err:
+                self.logger.error(
+                    f"Could not connect to Redis instance: {conn_err} Retrying in {connection_wait_time} seconds..."
+                )
+                time.sleep(connection_wait_time)
+                connection_wait_time *= EXPONENTIAL_BACKOFF_FACTOR
+                connection_wait_time = min(connection_wait_time, MAX_CONNECTION_WAIT_TIME)
+            else:
+                connection_wait_time = 1
 
             if burst or self._stop_event.is_set():
                 break
