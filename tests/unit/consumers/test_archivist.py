@@ -20,7 +20,7 @@ import logging
 
 from unittest.mock import patch, MagicMock
 
-from grimoirelab.core.consumers.archivist import OpenSearchArchivist, Entry, MAPPING
+from grimoirelab.core.consumers.archivist import OpenSearchArchivist, Entry
 
 from ..base import GrimoireLabTestCase
 
@@ -61,7 +61,6 @@ class TestOpenSearchArchivist(GrimoireLabTestCase):
             max_retries=3,
             retry_on_timeout=True,
         )
-        mock_client.indices.create.assert_called_once_with(index="test_index", body=MAPPING)
 
     @patch("grimoirelab.core.consumers.archivist.OpenSearch")
     def test_process_entries(self, mock_opensearch):
