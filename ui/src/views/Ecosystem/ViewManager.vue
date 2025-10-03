@@ -11,7 +11,7 @@ export default {
     ProjectView: defineAsyncComponent(() => import('../Project/DetailView.vue')),
     RepoView: defineAsyncComponent(() => import('../Repo/DetailView.vue')),
     NewRepoView: defineAsyncComponent(() => import('../Repo/NewRepo.vue')),
-    SBoMView: defineAsyncComponent(() => import('../Repo/LoadSbom.vue'))
+    BulkCreateView: defineAsyncComponent(() => import('../Repo/BulkCreate.vue'))
   },
   props: {
     ecosystem: {
@@ -46,7 +46,9 @@ export default {
       } else if (this.create && this.create === 'repo') {
         return 'NewRepoView'
       } else if (this.create && this.create === 'sbom') {
-        return 'SBoMView'
+        return 'BulkCreateView'
+      } else if (this.create && this.create === 'github') {
+        return 'BulkCreateView'
       } else if (this.repo) {
         return 'RepoView'
       } else {

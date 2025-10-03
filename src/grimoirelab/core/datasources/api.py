@@ -332,6 +332,10 @@ class RepoList(generics.ListCreateAPIView):
                 job_max_retries = request.data["scheduler"].get("job_max_retries", job_max_retries)
 
             task_args = {"uri": request.data["uri"]}
+
+            if "backend_args" in request.data:
+                task_args = request.data["backend_args"]
+
             task = schedule_task(
                 "eventizer",
                 task_args,
