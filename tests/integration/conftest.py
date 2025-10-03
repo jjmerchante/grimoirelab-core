@@ -31,7 +31,7 @@ from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.mysql import MySqlContainer
 from testcontainers.opensearch import OpenSearchContainer
 from testcontainers.redis import RedisContainer
-from grimoirelab.core.consumers.archivist import OpenSearchArchivist
+from grimoirelab.core.consumers.archivist import OpenSearchArchivist, MAPPING
 
 
 STREAM_NAME = "test_stream"
@@ -42,7 +42,7 @@ EVENTS_INDEX = "test_index"
 
 mysql = MySqlContainer("mariadb:latest", root_password="root").with_exposed_ports(3306)
 redis = RedisContainer("valkey/valkey:8").with_exposed_ports(6379)
-opensearch = OpenSearchContainer().with_exposed_ports(9200)
+opensearch = OpenSearchContainer("opensearchproject/opensearch:3").with_exposed_ports(9200)
 
 
 @pytest.fixture(scope="module")
@@ -86,6 +86,7 @@ def grimoirelab_config():
     """Fixture to set up the GrimoireLab configuration."""
 
     os.environ["DJANGO_SETTINGS_MODULE"] = "grimoirelab.core.config.settings"
+    os.environ["GRIMOIRELAB_REDIS_HOST"] = redis.get_container_host_ip()
     os.environ["GRIMOIRELAB_REDIS_PORT"] = str(redis.get_exposed_port(6379))
     os.environ["GRIMOIRELAB_DB_PORT"] = str(mysql.get_exposed_port(3306))
     os.environ["GRIMOIRELAB_DB_PASSWORD"] = mysql.root_password
@@ -156,16 +157,25 @@ def redis_conn():
 
 
 @pytest.fixture
-def opensearch_conn():
+def opensearch_conn(request):
     """Fixture to create an OpenSearch connection."""
+
+    rollover_indices = getattr(request, "param", False)
 
     conn = OpenSearch(
         hosts=[f"http://localhost:{opensearch.get_exposed_port(9200)}"],
         http_auth=("admin", "admin"),
         verify_certs=False,
     )
+    if not rollover_indices:
+        conn.indices.create(index=EVENTS_INDEX, body=MAPPING, ignore=400)
 
     yield conn
 
     # Cleanup
-    conn.indices.delete(index=EVENTS_INDEX, ignore=[400, 404])
+    if not rollover_indices:
+        conn.indices.delete(index=EVENTS_INDEX, ignore=[400, 404])
+    else:
+        conn.indices.delete(index=f"{EVENTS_INDEX}-*", ignore=[400, 404])
+        conn.indices.delete_alias(index="*", name=EVENTS_INDEX, ignore=[400, 404])
+        conn.indices.delete_alias(index="*", name=f"{EVENTS_INDEX}-write", ignore=[400, 404])

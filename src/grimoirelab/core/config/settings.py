@@ -363,6 +363,9 @@ GRIMOIRELAB_ARCHIVIST = {
     in ("true", "1"),
     "BLOCK_TIMEOUT": int(os.environ.get("GRIMOIRELAB_ARCHIVIST_BLOCK_TIMEOUT", 60000)),
     "BULK_SIZE": int(os.environ.get("GRIMOIRELAB_ARCHIVIST_BULK_SIZE", 100)),
+    "ROLLOVER_INDICES": os.environ.get("GRIMOIRELAB_ARCHIVIST_ROLLOVER_INDICES", "True").lower()
+    in ("true", "1"),
+    "ROLLOVER_SIZE": os.environ.get("GRIMOIRELAB_ARCHIVIST_ROLLOVER_SIZE", "20gb"),
 }
 
 #

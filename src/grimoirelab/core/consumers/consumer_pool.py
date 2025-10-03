@@ -25,8 +25,8 @@ from enum import Enum
 from multiprocessing import Process, Event
 from uuid import uuid4
 
-import django_rq
 import redis
+from rq.connections import parse_connection
 
 from .consumer import Consumer
 
@@ -70,6 +70,7 @@ class ConsumerPool:
 
     def __init__(
         self,
+        connection: redis.Redis,
         stream_name: str,
         group_name: str,
         num_consumers: int = 10,
@@ -85,7 +86,7 @@ class ConsumerPool:
         self.stream_block_timeout = stream_block_timeout
         self.verbose = verbose
         self._consumers = {}
-        self.connection = django_rq.get_connection()
+        self.connection = connection
         self._stop_event = Event()
 
     def start(self, burst: bool = False):
@@ -101,6 +102,8 @@ class ConsumerPool:
 
         :param burst: If True, the pool will not respawn consumers
         """
+        self._setup_consumer_pool(burst=burst)
+
         self.logger.info(f"Starting consumer pool with {self.num_consumers} consumers.")
 
         self.status = self.Status.STARTED
@@ -139,7 +142,14 @@ class ConsumerPool:
         """Create a consumer and start it."""
 
         name = f"{self.CONSUMER_CLASS.__name__}:{uuid4().hex}"
+        connection_class, connection_pool_class, connection_pool_kwargs = parse_connection(
+            self.connection
+        )
         kwargs = {
+            "connection_class": connection_class,
+            "connection_pool_class": connection_pool_class,
+            "connection_pool_kwargs": connection_pool_kwargs,
+            "burst": burst,
             "consumer_class": self.CONSUMER_CLASS,
             "stream_name": self.stream_name,
             "consumer_group": self.group_name,
@@ -226,6 +236,13 @@ class ConsumerPool:
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, self._request_stop)
 
+    def _setup_consumer_pool(self, burst: bool = False):
+        """Perform any additional setup before starting the consumers.
+
+        This method can be overridden in subclasses to perform custom setup.
+        """
+        pass
+
 
 def _run_consumer(
     consumer_class: type[Consumer],
@@ -235,9 +252,18 @@ def _run_consumer(
     # Ignore SIGINT signal to avoid being killed when pressing Ctrl+C
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    connection = django_rq.get_connection()
+    connection_class = kwargs.pop("connection_class")
+    connection_pool_class = kwargs.pop("connection_pool_class")
+    connection_pool_kwargs = kwargs.pop("connection_pool_kwargs")
+    connection = connection_class(
+        connection_pool=redis.ConnectionPool(
+            connection_class=connection_pool_class, **connection_pool_kwargs
+        )
+    )
+
+    burst = kwargs.pop("burst", False)
     try:
         consumer = consumer_class(connection=connection, *args, **kwargs)
-        consumer.start(burst=kwargs.get("burst", False))
+        consumer.start(burst=burst)
     except Exception as e:
         logging.error(f"Consumer {consumer_class.__name__} failed: {e}")

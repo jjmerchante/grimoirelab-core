@@ -46,6 +46,7 @@ class TestConsumerPool(GrimoireLabTestCase):
         """Test whether the pool is initialized correctly"""
 
         pool = SampleConsumerPool(
+            connection=self.conn,
             stream_name="test_stream",
             group_name="test_group",
             num_consumers=10,
@@ -65,6 +66,7 @@ class TestConsumerPool(GrimoireLabTestCase):
         """Test whether the consumers are cleaned up correctly"""
 
         pool = SampleConsumerPool(
+            connection=self.conn,
             stream_name="test_stream",
             group_name="test_group",
             num_consumers=10,
@@ -92,6 +94,7 @@ class TestConsumerPool(GrimoireLabTestCase):
         """Test whether consumers are restored correctly"""
 
         pool = SampleConsumerPool(
+            connection=self.conn,
             stream_name="test_stream",
             group_name="test_group",
             num_consumers=10,
@@ -123,6 +126,7 @@ class TestConsumerPool(GrimoireLabTestCase):
             os.kill(pid, signal.SIGTERM)
 
         pool = SampleConsumerPool(
+            connection=self.conn,
             stream_name="test_stream",
             group_name="test_group",
             num_consumers=10,

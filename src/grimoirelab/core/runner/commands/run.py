@@ -260,6 +260,7 @@ def archivists(workers: int, verbose: bool, burst: bool):
 
     pool = OpenSearchArchivistPool(
         # Consumer parameters
+        connection=django_rq.get_connection(),
         stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
         group_name="opensearch-archivist",
         num_consumers=workers,
@@ -272,6 +273,8 @@ def archivists(workers: int, verbose: bool, burst: bool):
         index=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_INDEX"],
         bulk_size=settings.GRIMOIRELAB_ARCHIVIST["BULK_SIZE"],
         verify_certs=settings.GRIMOIRELAB_ARCHIVIST["STORAGE_VERIFY_CERT"],
+        rollover_indices=settings.GRIMOIRELAB_ARCHIVIST["ROLLOVER_INDICES"],
+        rollover_size=settings.GRIMOIRELAB_ARCHIVIST["ROLLOVER_SIZE"],
     )
     pool.start(burst=burst)
 
@@ -296,6 +299,7 @@ def ushers(workers: int, verbose: bool, burst: bool):
 
     pool = SortingHatConsumerPool(
         # Consumer parameters
+        connection=django_rq.get_connection(),
         stream_name=settings.GRIMOIRELAB_EVENTS_STREAM_NAME,
         group_name="sortinghat-identities",
         num_consumers=workers,
