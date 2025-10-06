@@ -164,22 +164,21 @@ def maintain_tasks() -> None:
     This function will check the status of the tasks and jobs
     that are scheduled, rescheduling them if necessary.
     """
-    tasks = find_tasks_by_status(
-        [
-            SchedulerStatus.RUNNING,
-            SchedulerStatus.RECOVERY,
-            SchedulerStatus.ENQUEUED,
-            SchedulerStatus.NEW,
-        ]
-    )
+    active_status = [
+        SchedulerStatus.RUNNING,
+        SchedulerStatus.RECOVERY,
+        SchedulerStatus.ENQUEUED,
+        SchedulerStatus.NEW,
+    ]
+    tasks = find_tasks_by_status(active_status)
 
     for task in tasks:
-        job_db = task.jobs.order_by("-scheduled_at").first()
+        job_db = task.jobs.filter(status__in=active_status).order_by("-scheduled_at").first()
 
         if not _is_job_removed_or_stopped(job_db, task.default_job_queue):
             continue
 
-        logger.debug(f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling.")
+        logger.info(f"Job #{job_db.job_id} in queue (task: {task.task_id}) stopped. Rescheduling.")
 
         current_time = datetime_utcnow()
         scheduled_at = max(task.scheduled_at, current_time)
@@ -203,7 +202,10 @@ def _is_job_removed_or_stopped(job: Job, queue: str) -> bool:
             # Sometimes, the worker may be forcibly stopped, leaving the job
             # in the STARTED status. We need to check if the job has expired
             # due to a missing heartbeat.
-            expiration_date = StartedJobRegistry(queue, connection).get_expiration_time(job_rq)
+            try:
+                expiration_date = StartedJobRegistry(queue, connection).get_expiration_time(job_rq)
+            except TypeError:
+                return True
             return expiration_date < datetime.datetime.now()
         else:
             return status in RQ_JOB_STOPPED_STATUS
