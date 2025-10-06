@@ -32,6 +32,7 @@ import opensearchpy
 import redis
 
 from django.conf import settings
+from django.db import connections, OperationalError
 from urllib3.util import create_urllib3_context
 
 if typing.TYPE_CHECKING:
@@ -70,6 +71,9 @@ def server(ctx: Context, devel: bool):
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
     """
+    _wait_database_ready()
+    _wait_redis_ready()
+
     env = os.environ
 
     env["UWSGI_ENV"] = f"DJANGO_SETTINGS_MODULE={ctx.obj['cfg']}"
@@ -104,7 +108,7 @@ def server(ctx: Context, devel: bool):
     os.execvp("uwsgi", ("uwsgi",))
 
 
-def worker_options(workers=5, verbose=False, burst=False):
+def worker_options(workers: int = 5, verbose: bool = False, burst: bool = False):
     """Decorator to add common worker options to commands."""
 
     def decorator(f):
@@ -146,6 +150,9 @@ def eventizers(workers: int, verbose: bool, burst: bool):
     Workers get jobs from the GRIMOIRELAB_Q_EVENTIZER_JOBS queue defined
     in the configuration file.
     """
+    _wait_redis_ready()
+    _wait_database_ready()
+
     django.core.management.call_command(
         "rqworker-pool",
         settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
@@ -162,7 +169,9 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(backoff)
 
 
-def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None:
+def _wait_opensearch_ready(
+    url: str, username: str | None, password: str | None, index: str, verify_certs: bool
+) -> None:
     """Wait for OpenSearch to be available before starting"""
 
     os_logger = logging.getLogger("opensearch")
@@ -175,10 +184,7 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
         context.load_default_certs()
         context.load_verify_locations(certifi.where())
 
-    if username and password:
-        auth = (username, password)
-    else:
-        auth = None
+    auth = (username, password) if username and password else None
 
     for attempt in range(DEFAULT_MAX_RETRIES):
         try:
@@ -196,11 +202,14 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
             # Index still not created, but OpenSearch is up
             break
         except opensearchpy.exceptions.AuthorizationException:
-            logging.error("Authorization failed. Check your credentials.")
+            logging.error("OpenSearch Authorization failed. Check your credentials.")
             exit(1)
-        except (opensearchpy.exceptions.ConnectionError, opensearchpy.exceptions.TransportError):
+        except (
+            opensearchpy.exceptions.ConnectionError,
+            opensearchpy.exceptions.TransportError,
+        ) as e:
             logging.warning(
-                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready."
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready: {e}"
             )
             _sleep_backoff(attempt)
 
@@ -231,6 +240,33 @@ def _wait_redis_ready():
         exit(1)
 
     logging.info("Redis is ready")
+
+
+def _wait_database_ready():
+    """Wait for the database to be available before starting."""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            db_conn = connections["default"]
+            if db_conn:
+                with db_conn.cursor():
+                    pass  # Just test the connection
+                break
+
+        except OperationalError as e:
+            logging.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Database connection not ready: {e.__cause__}"
+            )
+            _sleep_backoff(attempt)
+    else:
+        error_msg = "Failed to connect to the database after all retries"
+        logging.error(error_msg)
+        raise ConnectionError(error_msg)
+
+    logging.info("Database is ready.")
+
+    # Close all database connections to avoid timed out connections
+    connections.close_all()
 
 
 @run.command()
@@ -295,6 +331,7 @@ def ushers(workers: int, verbose: bool, burst: bool):
     """
     from grimoirelab.core.consumers.identities import SortingHatConsumerPool
 
+    _wait_database_ready()
     _wait_redis_ready()
 
     pool = SortingHatConsumerPool(
