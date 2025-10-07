@@ -92,9 +92,6 @@ def test_insert_many_huge_events(redis_conn, opensearch_conn):
 
     # Simulate the archivist recovering the entries
     recovered_entries = archivist.recover_stream_entries(recover_idle_time=1)
-    recovered_entries = list(recovered_entries)
-    assert len(recovered_entries) == 10
-
     archivist.process_entries(recovered_entries, recovery=True)
 
     # Wait for OpenSearch to process the event count

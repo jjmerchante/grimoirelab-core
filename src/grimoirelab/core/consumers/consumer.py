@@ -193,7 +193,7 @@ class Consumer:
 
                 yield Entry(message_id=message_id, event=json.loads(message_data))
 
-            if response[0] == b"0-0":
+            if not messages:
                 break
 
             if self._stop_event.is_set():
