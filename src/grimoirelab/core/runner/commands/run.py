@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import logging
+import multiprocessing
 import os
 import time
 import typing
@@ -32,6 +33,7 @@ import opensearchpy
 import redis
 
 from django.conf import settings
+from django.db import connections, OperationalError
 from urllib3.util import create_urllib3_context
 
 if typing.TYPE_CHECKING:
@@ -57,9 +59,15 @@ def run(ctx: Context):
     default=False,
     help="Run the service in developer mode.",
 )
+@click.option(
+    "--maintenance-interval",
+    default=300,
+    show_default=True,
+    help="Interval in seconds to run maintenance tasks.",
+)
 @run.command()
 @click.pass_context
-def server(ctx: Context, devel: bool):
+def server(ctx: Context, devel: bool, maintenance_interval: int):
     """Start the GrimoireLab core server.
 
     GrimoireLab server allows to schedule tasks and fetch data from
@@ -69,7 +77,14 @@ def server(ctx: Context, devel: bool):
     By default, the server runs a WSGI app because in production it
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
+
+    The server also runs maintenance tasks in the background every
+    defined interval (default is 60 seconds). These tasks include
+    rescheduling failed tasks and cleaning old jobs.
     """
+    _wait_database_ready()
+    _wait_redis_ready()
+
     env = os.environ
 
     env["UWSGI_ENV"] = f"DJANGO_SETTINGS_MODULE={ctx.obj['cfg']}"
@@ -94,17 +109,49 @@ def server(ctx: Context, devel: bool):
     env["UWSGI_LAZY_APPS"] = "true"
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
-    # Run maintenance tasks
-    from grimoirelab.core.scheduler.scheduler import maintain_tasks
-
-    _ = django.core.wsgi.get_wsgi_application()
-    maintain_tasks()
+    # Run maintenance tasks in the background
+    _maintenance_process(maintenance_interval)
 
     # Run the server
     os.execvp("uwsgi", ("uwsgi",))
 
 
-def worker_options(workers=5, verbose=False, burst=False):
+def periodic_maintain_tasks(interval):
+    from grimoirelab.core.scheduler.scheduler import maintain_tasks
+
+    while True:
+        try:
+            maintain_tasks()
+            logging.info("Maintenance tasks executed successfully.")
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f"Redis connection error during maintenance tasks: {e}")
+        except django.db.utils.OperationalError as e:
+            logging.error(f"Database connection error during maintenance tasks: {e}")
+            connections.close_all()
+        except Exception as e:
+            logging.error("Error during maintenance tasks: %s", e)
+            raise
+        except KeyboardInterrupt:
+            logging.info("Maintenance task interrupted. Exiting...")
+            return
+
+        time.sleep(interval)
+
+
+def _maintenance_process(maintenance_interval):
+    """Process to run maintenance tasks periodically."""
+
+    process = multiprocessing.Process(
+        target=periodic_maintain_tasks, args=(maintenance_interval,), daemon=True
+    )
+    process.start()
+
+    logging.info("Started maintenance process with PID %s", process.pid)
+
+    return process
+
+
+def worker_options(workers: int = 5, verbose: bool = False, burst: bool = False):
     """Decorator to add common worker options to commands."""
 
     def decorator(f):
@@ -146,6 +193,9 @@ def eventizers(workers: int, verbose: bool, burst: bool):
     Workers get jobs from the GRIMOIRELAB_Q_EVENTIZER_JOBS queue defined
     in the configuration file.
     """
+    _wait_redis_ready()
+    _wait_database_ready()
+
     django.core.management.call_command(
         "rqworker-pool",
         settings.GRIMOIRELAB_Q_EVENTIZER_JOBS,
@@ -162,7 +212,9 @@ def _sleep_backoff(attempt: int) -> None:
     time.sleep(backoff)
 
 
-def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None:
+def _wait_opensearch_ready(
+    url: str, username: str | None, password: str | None, index: str, verify_certs: bool
+) -> None:
     """Wait for OpenSearch to be available before starting"""
 
     os_logger = logging.getLogger("opensearch")
@@ -175,10 +227,7 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
         context.load_default_certs()
         context.load_verify_locations(certifi.where())
 
-    if username and password:
-        auth = (username, password)
-    else:
-        auth = None
+    auth = (username, password) if username and password else None
 
     for attempt in range(DEFAULT_MAX_RETRIES):
         try:
@@ -196,11 +245,14 @@ def _wait_opensearch_ready(url, username, password, index, verify_certs) -> None
             # Index still not created, but OpenSearch is up
             break
         except opensearchpy.exceptions.AuthorizationException:
-            logging.error("Authorization failed. Check your credentials.")
+            logging.error("OpenSearch Authorization failed. Check your credentials.")
             exit(1)
-        except (opensearchpy.exceptions.ConnectionError, opensearchpy.exceptions.TransportError):
+        except (
+            opensearchpy.exceptions.ConnectionError,
+            opensearchpy.exceptions.TransportError,
+        ) as e:
             logging.warning(
-                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready."
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] OpenSearch connection not ready: {e}"
             )
             _sleep_backoff(attempt)
 
@@ -231,6 +283,33 @@ def _wait_redis_ready():
         exit(1)
 
     logging.info("Redis is ready")
+
+
+def _wait_database_ready():
+    """Wait for the database to be available before starting."""
+
+    for attempt in range(DEFAULT_MAX_RETRIES):
+        try:
+            db_conn = connections["default"]
+            if db_conn:
+                with db_conn.cursor():
+                    pass  # Just test the connection
+                break
+
+        except OperationalError as e:
+            logging.warning(
+                f"[{attempt + 1}/{DEFAULT_MAX_RETRIES}] Database connection not ready: {e.__cause__}"
+            )
+            _sleep_backoff(attempt)
+    else:
+        error_msg = "Failed to connect to the database after all retries"
+        logging.error(error_msg)
+        raise ConnectionError(error_msg)
+
+    logging.info("Database is ready.")
+
+    # Close all database connections to avoid timed out connections
+    connections.close_all()
 
 
 @run.command()
@@ -295,6 +374,7 @@ def ushers(workers: int, verbose: bool, burst: bool):
     """
     from grimoirelab.core.consumers.identities import SortingHatConsumerPool
 
+    _wait_database_ready()
     _wait_redis_ready()
 
     pool = SortingHatConsumerPool(
