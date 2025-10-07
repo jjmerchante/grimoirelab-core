@@ -65,7 +65,7 @@
       :page
       :pages
       :fetch-children="fetchProjectChildren"
-      @page:update="($event) => fetchChildren(project, $event)"
+      @page:update="($event) => fetchChildren(projectName, $event)"
       @filters:update="($event) => setFilters(projectName, $event)"
     />
     <v-alert

@@ -4,7 +4,10 @@
     <li v-if="hasMoreChildren" class="tree-list--row">
       <p class="py-3">
         <router-link
-          :to="{ name: 'project', params: { id: parent.name } }"
+          :to="{
+            name: 'ecosystems',
+            query: { project: parent.name, ecosystem: this.$route.query.ecosystem }
+          }"
           class="text-subtitle-2 text-primary"
         >
           <v-icon start size="small" color="primary">mdi-plus</v-icon> {{ count - 5 }} more items
