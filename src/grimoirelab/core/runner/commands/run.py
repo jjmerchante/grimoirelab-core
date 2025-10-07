@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import logging
+import multiprocessing
 import os
 import time
 import typing
@@ -58,9 +59,15 @@ def run(ctx: Context):
     default=False,
     help="Run the service in developer mode.",
 )
+@click.option(
+    "--maintenance-interval",
+    default=300,
+    show_default=True,
+    help="Interval in seconds to run maintenance tasks.",
+)
 @run.command()
 @click.pass_context
-def server(ctx: Context, devel: bool):
+def server(ctx: Context, devel: bool, maintenance_interval: int):
     """Start the GrimoireLab core server.
 
     GrimoireLab server allows to schedule tasks and fetch data from
@@ -70,6 +77,10 @@ def server(ctx: Context, devel: bool):
     By default, the server runs a WSGI app because in production it
     should be run with a reverse proxy. If you activate the '--dev' flag,
     a HTTP server will be run instead.
+
+    The server also runs maintenance tasks in the background every
+    defined interval (default is 60 seconds). These tasks include
+    rescheduling failed tasks and cleaning old jobs.
     """
     _wait_database_ready()
     _wait_redis_ready()
@@ -98,14 +109,46 @@ def server(ctx: Context, devel: bool):
     env["UWSGI_LAZY_APPS"] = "true"
     env["UWSGI_SINGLE_INTERPRETER"] = "true"
 
-    # Run maintenance tasks
-    from grimoirelab.core.scheduler.scheduler import maintain_tasks
-
-    _ = django.core.wsgi.get_wsgi_application()
-    maintain_tasks()
+    # Run maintenance tasks in the background
+    _maintenance_process(maintenance_interval)
 
     # Run the server
     os.execvp("uwsgi", ("uwsgi",))
+
+
+def periodic_maintain_tasks(interval):
+    from grimoirelab.core.scheduler.scheduler import maintain_tasks
+
+    while True:
+        try:
+            maintain_tasks()
+            logging.info("Maintenance tasks executed successfully.")
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f"Redis connection error during maintenance tasks: {e}")
+        except django.db.utils.OperationalError as e:
+            logging.error(f"Database connection error during maintenance tasks: {e}")
+            connections.close_all()
+        except Exception as e:
+            logging.error("Error during maintenance tasks: %s", e)
+            raise
+        except KeyboardInterrupt:
+            logging.info("Maintenance task interrupted. Exiting...")
+            return
+
+        time.sleep(interval)
+
+
+def _maintenance_process(maintenance_interval):
+    """Process to run maintenance tasks periodically."""
+
+    process = multiprocessing.Process(
+        target=periodic_maintain_tasks, args=(maintenance_interval,), daemon=True
+    )
+    process.start()
+
+    logging.info("Started maintenance process with PID %s", process.pid)
+
+    return process
 
 
 def worker_options(workers: int = 5, verbose: bool = False, burst: bool = False):
