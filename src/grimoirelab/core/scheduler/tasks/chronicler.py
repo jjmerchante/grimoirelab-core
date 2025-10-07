@@ -88,12 +88,20 @@ def chronicler_job(
     # that are fetched by the perceval generator.
     try:
         events = chronicler.eventizer.eventize(datasource_type, perceval_gen.items)
+        pipeline = rq_job.connection.pipeline()
         for event in events:
             data = cloudevents.conversion.to_json(event)
             message = {
                 "data": data,
             }
-            rq_job.connection.xadd(events_stream, message, maxlen=stream_max_length)
+
+            pipeline.xadd(events_stream, message, maxlen=stream_max_length)
+            if len(pipeline.command_stack) > 100:
+                pipeline.execute()
+
+        if len(pipeline.command_stack) > 0:
+            pipeline.execute()
+
     finally:
         progress.summary = perceval_gen.summary
 
