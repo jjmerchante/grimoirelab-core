@@ -34,12 +34,13 @@ export function useProjects() {
     })
   }
 
-  function openCreateModal() {
+  function openCreateModal(parentProject) {
     Object.assign(modal.value, {
       isOpen: true,
       edit: false,
       name: '',
-      title: null
+      title: null,
+      parentProject: parentProject
     })
   }
 

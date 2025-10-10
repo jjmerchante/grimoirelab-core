@@ -47,7 +47,7 @@
               v-model="parent_project"
               label="Parent project (optional)"
               :error-messages="errors.parent_project"
-              :exclude="id"
+              :exclude="edit ? id : null"
             />
           </v-col>
         </v-row>

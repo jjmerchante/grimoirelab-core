@@ -34,7 +34,7 @@
           />
         </template>
         <v-list density="compact" color="primary" nav>
-          <v-list-item @click="openCreateModal">
+          <v-list-item @click="openCreateModal(project)">
             <template #prepend>
               <v-icon size="small">mdi-folder-plus-outline</v-icon>
             </template>
