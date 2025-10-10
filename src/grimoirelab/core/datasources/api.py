@@ -469,7 +469,9 @@ class ProjectChildSerializer(serializers.ModelSerializer):
             # Return repository data
             representation["type"] = "repository"
             representation["uri"] = instance.uri
-            representation["categories"] = instance.dataset_set.count()
+            representation["categories"] = instance.dataset_set.filter(
+                project__id=self.context["project_id"]
+            ).count()
             representation["uuid"] = instance.uuid
 
         return representation
@@ -487,13 +489,13 @@ class ProjectChildrenList(generics.ListAPIView):
     pagination_class = DataSourcesPaginator
 
     def get_queryset(self):
-        project = get_object_or_404(
+        self.project = get_object_or_404(
             Project,
             name=self.kwargs.get("project_name"),
             ecosystem__name=self.kwargs.get("ecosystem_name"),
         )
-        project_queryset = Project.objects.filter(parent_project=project)
-        repo_queryset = Repository.objects.filter(dataset__project=project).distinct()
+        project_queryset = Project.objects.filter(parent_project=self.project)
+        repo_queryset = Repository.objects.filter(dataset__project=self.project).distinct()
 
         term = self.request.query_params.get("term")
         if term is not None:
@@ -505,3 +507,8 @@ class ProjectChildrenList(generics.ListAPIView):
         queryset = list(itertools.chain(project_queryset, repo_queryset))
 
         return queryset
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"project_id": self.project.id})
+        return context

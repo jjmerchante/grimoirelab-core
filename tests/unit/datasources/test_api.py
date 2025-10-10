@@ -1291,7 +1291,7 @@ class ProjectChildrenApiTest(APITestCase):
         self.assertEqual(repository["id"], self.repository2.id)
         self.assertEqual(repository["type"], "repository")
         self.assertEqual(repository["uri"], "https://example.com/repo2.git")
-        self.assertEqual(repository["categories"], 2)
+        self.assertEqual(repository["categories"], 1)
 
     def test_project_children_filter_term(self):
         """Test that it returns a list of children for a project filtered by term"""
@@ -1316,7 +1316,7 @@ class ProjectChildrenApiTest(APITestCase):
         self.assertEqual(repository["id"], self.repository2.id)
         self.assertEqual(repository["type"], "repository")
         self.assertEqual(repository["uri"], "https://example.com/repo2.git")
-        self.assertEqual(repository["categories"], 2)
+        self.assertEqual(repository["categories"], 1)
 
     def test_project_children_list_pagination(self):
         """Test that it returns a paginated list of children for a project"""
@@ -1335,6 +1335,44 @@ class ProjectChildrenApiTest(APITestCase):
         self.assertEqual(repository["id"], self.repository2.id)
         self.assertEqual(repository["type"], "repository")
         self.assertEqual(repository["uri"], "https://example.com/repo2.git")
+        self.assertEqual(repository["categories"], 1)
+
+    def test_project_children_sharing_repos(self):
+        """Test that it returns the repository categories filtered by project"""
+
+        ecosystem2 = Ecosystem.objects.create(name="ecosystem2")
+        project2 = Project.objects.create(name="project2", ecosystem=ecosystem2)
+        DataSet.objects.create(project=project2, repository=self.repository1, category="category1")
+
+        ecosystem3 = Ecosystem.objects.create(name="ecosystem3")
+        project3 = Project.objects.create(name="project3", ecosystem=ecosystem3)
+        DataSet.objects.create(project=project3, repository=self.repository1, category="category1")
+        DataSet.objects.create(project=project3, repository=self.repository1, category="category2")
+
+        url = reverse(
+            "children-list",
+            kwargs={"ecosystem_name": "ecosystem2", "project_name": "project2"},
+        )
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        repository = response.data["results"][0]
+        self.assertEqual(repository["id"], self.repository1.id)
+        self.assertEqual(repository["uri"], self.repository1.uri)
+        self.assertEqual(repository["categories"], 1)
+
+        url = reverse(
+            "children-list",
+            kwargs={"ecosystem_name": "ecosystem3", "project_name": "project3"},
+        )
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        repository = response.data["results"][0]
+        self.assertEqual(repository["id"], self.repository1.id)
+        self.assertEqual(repository["uri"], self.repository1.uri)
         self.assertEqual(repository["categories"], 2)
 
     def test_unauthenticated_request(self):
