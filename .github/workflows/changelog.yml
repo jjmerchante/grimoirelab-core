@@ -3,7 +3,7 @@ name: Check changelog file included
 on:
   pull_request:
     paths:
-      - 'grimoirelab/**'
+      - 'src/**'
 
 jobs:
   check-changelog:
