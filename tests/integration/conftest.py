@@ -118,7 +118,7 @@ def run_archivist():
             consumer_group=CONSUMER_GROUP,
             consumer_name=CONSUMER_NAME,
             stream_block_timeout=500,
-            logging_level=logging.DEBUG,
+            logging_level=logging.INFO,
             url=f"http://localhost:{opensearch.get_exposed_port(9200)}",
             user="admin",
             password="admin",

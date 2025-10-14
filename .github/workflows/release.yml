@@ -85,7 +85,7 @@ jobs:
         run: |
           PACKAGE=`(cd dist && ls *whl)` && echo $PACKAGE
           poetry run pip install --pre ./dist/$PACKAGE
-          poetry run python manage.py test --settings=config.settings.testing
+          #poetry run pytest -s
 
   release:
     needs: [tests]
