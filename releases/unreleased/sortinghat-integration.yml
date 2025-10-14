@@ -1,0 +1,8 @@
+---
+title: SortingHat Integration
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Store and manage contributor identities in the SortingHat database,
+  accessible via API.
