@@ -96,13 +96,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  publish:
-    needs: [tests]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish the package on PyPI
-        uses: chaoss/grimoirelab-github-actions/publish@main
-        with:
-          artifact-name: grimoirelab-core-dist
-          artifact-path: dist
-          pypi-api-token: ${{ secrets.PYPI_API_TOKEN }}
+#  publish:
+#    needs: [tests]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Publish the package on PyPI
+#        uses: chaoss/grimoirelab-github-actions/publish@main
+#        with:
+#          artifact-name: grimoirelab-core-dist
+#          artifact-path: dist
+#          pypi-api-token: ${{ secrets.PYPI_API_TOKEN }}
