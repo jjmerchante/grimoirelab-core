@@ -1,0 +1,7 @@
+---
+title: OpenSearch Integration
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Store and query collected events in OpenSearch for scalable analytics.

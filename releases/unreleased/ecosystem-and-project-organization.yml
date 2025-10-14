@@ -1,0 +1,8 @@
+---
+title: Ecosystem and Project Organization
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Group repositories into ecosystems and projects for better
+  structure and analysis.
