@@ -1,0 +1,8 @@
+---
+title: Event Generation from Git Repositories
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Automatically generate events from commits, merge commits,
+  file changes, and contributor identities.
