@@ -61,6 +61,8 @@ opensearch-py = "^3.0.0"
 djangorestframework-simplejwt = "^5.4.0"
 django-storages = {version = "^1.14.6", extras = ["google"]}
 drf-spectacular = "^0.28.0"
+django-structlog = "^9.0.1"
+structlog = "^25.2.0"
 grimoirelab-toolkit = {version = ">=1.2.0", allow-prereleases = true}
 perceval = {version = ">=1.3.4", allow-prereleases = true}
 sortinghat = {version = ">=1.11.0", allow-prereleases = true}

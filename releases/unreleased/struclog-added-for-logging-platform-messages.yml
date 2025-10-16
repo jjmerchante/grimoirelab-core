@@ -1,0 +1,14 @@
+---
+title: struclog added for logging platform messages
+category: other
+author: Santiago Dueñas <sduenas@bitergia.com>
+issue: null
+notes: >
+  Organizing log data in a structured format makes easier
+  to read and analyze it. After adding 'structlog',
+  log messages will always have a structured format.
+
+  The default mode prints the messages to the console
+  in plain format, but it can also be configured to print
+  them in JSON format by setting the environment variable
+  'GRIMOIRELAB_LOGS_JSON' to 1 or 'true'.

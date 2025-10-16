@@ -80,7 +80,7 @@ $ pip install -e .
 ```
 
 #### Poetry
-We use [poetry](https://python-poetry.org/) for dependency management and 
+We use [poetry](https://python-poetry.org/) for dependency management and
 packaging. You can install it following its [documentation](https://python-poetry.org/docs/#installation).
 Once you have installed it, you can install grimoirelab-core and the dependencies
 in a project isolated environment using:
@@ -134,7 +134,7 @@ Commands:
 
 ## Configuration
 
-The first step is to run a Redis server, a MySQL database and an OpenSearch 
+The first step is to run a Redis server, a MySQL database and an OpenSearch
 container that will be used for communicating components and storing results.
 Please refer to their documentation to know how to install and run them.
 
@@ -202,3 +202,6 @@ Valkey, and OpenSearch).
 ```
 (.venv)$ pytest
 ```
+
+Set the environment variable `GRIMOIRELAB_TESTING_VERBOSE` to activate the
+verbose mode.
