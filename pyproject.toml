@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "grimoirelab-core"
-version = "0.1.0"
+version = "1.0.0-alpha.1"
 description = "Core of GrimoireLab"
 authors = [
     "GrimoireLab Developers"
