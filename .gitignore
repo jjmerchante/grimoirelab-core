@@ -1,7 +1,6 @@
 # Python files
 *.pyc
 *.pyo
-build
 
 # Package files
 src/grimoirelab/core/static

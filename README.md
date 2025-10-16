@@ -92,6 +92,18 @@ To spaw a new shell within the virtual environment use:
 $ poetry shell
 ```
 
+To build the static files automatically you can install the pre-hook plugin
+included in the project. Each time you run `poetry install` or `poetry build`
+the static files will be built automatically:
+```
+$ poetry self add "$PWD/build/poetry-prehook"
+```
+
+If you prefer to build the static files manually, you can run:
+```
+$ poetry run python build/build-ui.py
+```
+
 ## Usage
 
 ```

@@ -1,0 +1,30 @@
+[project]
+name = "poetry-prehook"
+version = "0.1.0"
+description = "A Poetry plugin that allows executing scripts before poetry install and build commands"
+authors = [
+    {name = "GrimoireLab Developers"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "poetry-core (>=2.0.0,<3.0.0)",
+    "cleo (>=2.1.0,<3.0.0)",
+]
+classifiers = [
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.entry-points."poetry.application.plugin"]
+poetry-prehook = "poetry_prehook:PreHookPlugin"
+
+[tool.poetry]
+packages = [{include = "poetry_prehook"}]
+
+[tool.poetry.plugins."poetry.application.plugin"]
+poetry-prehook = "poetry_prehook:PreHookPlugin"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
