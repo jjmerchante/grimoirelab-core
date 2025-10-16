@@ -1,0 +1,11 @@
+---
+title: Superuser creation in setup command
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  The setup command now supports superuser creation,
+  simplifying initial platform setup, especially in
+  containerized environments. It also includes a
+  `--no-interactive` option for non-interactive
+  execution.

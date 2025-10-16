@@ -47,22 +47,33 @@ def admin(ctx: Context):
 
 
 @admin.command()
-def setup():
+@click.option(
+    "--no-interactive", is_flag=True, default=False, help="Run the command in no interactive mode."
+)
+def setup(no_interactive):
     """Run initialization tasks to configure GrimoireLab.
 
     This command will create the database, tables and apply the
     defined migrations and fixtures.
+
+    It will also install the static files and prompt for the
+    creation of the superuser to access the admin interface.
+
+    If the command is run with --no-interactive option, the superuser
+    will be created using the environment variables.
     """
-    _setup()
+    interactive = not no_interactive
+    _setup(interactive)
 
 
-def _setup():
+def _setup(interactive: bool):
     """Setup GrimoireLab"""
 
     _create_database()
     _setup_database()
     _install_static_files()
     _create_system_user()
+    _create_superuser(interactive)
 
     click.secho("\nGrimoirelab configuration completed", fg="bright_cyan")
 
@@ -133,6 +144,35 @@ def _create_system_user():
     )
     if created:
         click.echo("System user created.")
+
+
+def _create_superuser(interactive: bool):
+    """Create the superuser if it does not exist"""
+
+    click.echo("## GrimoireLab superuser configuration\n")
+
+    env = os.environ
+    username = env.get("GRIMOIRELAB_SUPERUSER_USERNAME")
+    password = env.get("GRIMOIRELAB_SUPERUSER_PASSWORD")
+    if username and password:
+        # If both username and password are provided, create the superuser non-interactively
+        interactive = False
+        env["DJANGO_SUPERUSER_USERNAME"] = username
+        env["DJANGO_SUPERUSER_PASSWORD"] = password
+        env["DJANGO_SUPERUSER_EMAIL"] = "noreply@localhost"
+
+    if interactive:
+        create = input("Do you want to create a superuser? [y/N]: ")
+        if create.lower() != "y":
+            click.echo("Superuser creation skipped.")
+            return
+    try:
+        kwargs = {
+            "interactive": interactive,
+        }
+        django.core.management.call_command("createsuperuser", **kwargs)
+    except django.core.management.base.CommandError as error:
+        click.echo(f"Superuser creation skipped: {error}")
 
 
 @admin.command()
