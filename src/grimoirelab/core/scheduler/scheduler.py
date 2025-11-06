@@ -188,6 +188,14 @@ def maintain_tasks() -> None:
     for task in tasks:
         job_db = task.jobs.filter(status__in=active_status).order_by("-scheduled_at").first()
 
+        if not job_db:
+            logger.error(
+                "Task in active status but no active job found; rescheduling",
+                task_uuid=task.uuid,
+            )
+            _enqueue_task(task, scheduled_at=datetime_utcnow())
+            continue
+
         if not _is_job_removed_or_stopped(job_db, task.default_job_queue):
             continue
 
