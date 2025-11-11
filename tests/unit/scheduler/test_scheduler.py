@@ -153,6 +153,7 @@ class TestScheduleTask(GrimoireLabTestCase):
         task_class, job_class = register_task_model("test_task", SchedulerTestTask)
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(job_class)
                 schema_editor.delete_model(task_class)
@@ -294,6 +295,7 @@ class TestMaintainTasks(GrimoireLabTestCase):
         )
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(job_class_sched)
                 schema_editor.delete_model(task_class_sched)
@@ -457,6 +459,7 @@ class TestCancelTask(GrimoireLabTestCase):
         )
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(self.job_class)
                 schema_editor.delete_model(self.task_class)
@@ -527,6 +530,7 @@ class TestRescheduleTask(GrimoireLabTestCase):
         task_class, job_class = register_task_model("test_task", SchedulerTestTask)
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(job_class)
                 schema_editor.delete_model(task_class)
@@ -681,6 +685,7 @@ class TestOnSuccessCallback(GrimoireLabTestCase):
         )
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(self.job_class)
                 schema_editor.delete_model(self.task_class)
@@ -824,6 +829,7 @@ class TestOnFailureCallback(GrimoireLabTestCase):
         )
 
         def cleanup_test_model():
+            GRIMOIRELAB_TASK_MODELS.clear()
             with django.db.connection.schema_editor() as schema_editor:
                 schema_editor.delete_model(self.job_class)
                 schema_editor.delete_model(self.task_class)

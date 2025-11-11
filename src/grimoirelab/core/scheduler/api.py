@@ -16,8 +16,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import django_rq
-
 from django.db.models import (
     F,
     OuterRef,
@@ -27,148 +25,44 @@ from django.db.models import (
 from rest_framework import (
     filters,
     generics,
-    pagination,
     response,
-    serializers,
+    status,
+    views,
 )
+from rest_framework.exceptions import ValidationError
 
+from .errors import NotFoundError
 from .models import SchedulerStatus, get_registered_task_model
-from .tasks.models import EventizerTask
+from .scheduler import schedule_task, reschedule_task, cancel_task
+from .serializers import (
+    EventizerTaskSerializer,
+    SortingHatTaskSerializer,
+    SchedulerPaginator,
+    JobSummarySerializer,
+    JobSerializer,
+    JobLogsSerializer,
+)
+from .tasks.models import EventizerTask, SortingHatTask
 
 
-class EventizerPaginator(pagination.PageNumberPagination):
-    page_size = 25
-    page_size_query_param = "size"
-    max_page_size = 100
-
-    def get_paginated_response(self, data):
-        return response.Response(
-            {
-                "links": {"next": self.get_next_link(), "previous": self.get_previous_link()},
-                "count": self.page.paginator.count,
-                "page": self.page.number,
-                "total_pages": self.page.paginator.num_pages,
-                "results": data,
-            }
-        )
+TASKS_SERIALIZERS = {
+    EventizerTask.TASK_TYPE: EventizerTaskSerializer,
+    SortingHatTask.TASK_TYPE: SortingHatTaskSerializer,
+}
 
 
-class EventizerTaskListSerializer(serializers.ModelSerializer):
-    status = serializers.CharField(source="get_status_display")
-    last_jobs = serializers.SerializerMethodField()
+class ListTaskTypes(views.APIView):
+    """API view to list all registered task types."""
 
-    class Meta:
-        model = EventizerTask
-        fields = [
-            "uuid",
-            "status",
-            "runs",
-            "failures",
-            "last_run",
-            "last_jobs",
-            "scheduled_at",
-            "datasource_type",
-            "datasource_category",
-        ]
-
-    def get_last_jobs(self, obj):
-        job_klass = get_registered_task_model("eventizer")[1]
-        jobs = job_klass.objects.filter(task=obj).order_by("-job_num")[:10]
-        return EventizerJobSummarySerializer(jobs, many=True).data
+    def get(self, request, *args, **kwargs):
+        task_types = list(TASKS_SERIALIZERS.keys())
+        return response.Response(task_types, status=200)
 
 
-class EventizerJobListSerializer(serializers.ModelSerializer):
-    status = serializers.CharField(source="get_status_display")
+class ListCreateTasks(generics.ListCreateAPIView):
+    """API view to list all tasks paginated or create a new task."""
 
-    class Meta:
-        model = get_registered_task_model("eventizer")[1]
-        fields = [
-            "uuid",
-            "job_num",
-            "status",
-            "scheduled_at",
-            "finished_at",
-            "queue",
-        ]
-
-
-class EventizerTaskSerializer(serializers.ModelSerializer):
-    status = serializers.CharField(source="get_status_display")
-
-    class Meta:
-        model = EventizerTask
-        fields = [
-            "uuid",
-            "status",
-            "runs",
-            "failures",
-            "last_run",
-            "job_interval",
-            "scheduled_at",
-            "datasource_type",
-            "datasource_category",
-        ]
-
-
-class EventizerJobSummarySerializer(serializers.ModelSerializer):
-    status = serializers.CharField(source="get_status_display")
-
-    class Meta:
-        model = get_registered_task_model("eventizer")[1]
-        fields = [
-            "uuid",
-            "job_num",
-            "status",
-            "scheduled_at",
-            "finished_at",
-        ]
-
-
-class EventizerJobSerializer(serializers.ModelSerializer):
-    status = serializers.CharField(source="get_status_display")
-    progress = serializers.SerializerMethodField()
-
-    class Meta:
-        model = get_registered_task_model("eventizer")[1]
-        fields = [
-            "uuid",
-            "job_num",
-            "status",
-            "scheduled_at",
-            "finished_at",
-            "queue",
-            "progress",
-        ]
-
-    def get_progress(self, obj):
-        if obj.status == SchedulerStatus.RUNNING:
-            rq_job = django_rq.get_queue(obj.queue).fetch_job(obj.uuid)
-            if rq_job:
-                return rq_job.progress.to_dict()
-        return obj.progress
-
-
-class EventizerJobLogsSerializer(serializers.ModelSerializer):
-    logs = serializers.SerializerMethodField()
-
-    class Meta:
-        model = get_registered_task_model("eventizer")[1]
-        fields = [
-            "uuid",
-            "logs",
-        ]
-
-    def get_logs(self, obj):
-        if obj.status == SchedulerStatus.RUNNING:
-            rq_job = django_rq.get_queue(obj.queue).fetch_job(obj.uuid)
-            if rq_job:
-                return rq_job.job_log
-        return obj.logs
-
-
-class EventizerTaskList(generics.ListAPIView):
-    serializer_class = EventizerTaskListSerializer
-    pagination_class = EventizerPaginator
+    pagination_class = SchedulerPaginator
     filter_backends = [filters.OrderingFilter]
     ordering_fields = [
         "scheduled_at",
@@ -176,8 +70,20 @@ class EventizerTaskList(generics.ListAPIView):
     ]
     ordering = [F("last_run").desc(nulls_first=True)]
 
+    def get_serializer_class(self):
+        task_type = self.kwargs["task_type"]
+        try:
+            return TASKS_SERIALIZERS[task_type]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+
     def get_queryset(self):
-        queryset = EventizerTask.objects.all()
+        task_type = self.kwargs["task_type"]
+        try:
+            queryset = get_registered_task_model(task_type)[0].objects.all()
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+
         status = self.request.query_params.get("status")
         last_run_status = self.request.query_params.get("last_run_status")
         if status is not None:
@@ -187,7 +93,7 @@ class EventizerTaskList(generics.ListAPIView):
                 queryset = queryset.filter(status=status)
         if last_run_status is not None:
             annotation = Subquery(
-                get_registered_task_model("eventizer")[1]
+                get_registered_task_model(task_type)[1]
                 .objects.filter(task_id=OuterRef("id"), finished_at__isnull=False)
                 .order_by("-job_num")
                 .values("status")[:1]
@@ -197,46 +103,127 @@ class EventizerTaskList(generics.ListAPIView):
             )
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            task = schedule_task(**serializer.create_scheduler_task_args())
+        except Exception as e:
+            return response.Response(
+                {"detail": f"Error scheduling task: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        data = [f"Task '{task.uuid}' created."]
+        return response.Response(data, status=status.HTTP_201_CREATED)
 
-class EventizerTaskDetail(generics.RetrieveAPIView):
-    queryset = EventizerTask.objects.all()
+
+class RetrieveDestroyTask(generics.RetrieveDestroyAPIView):
+    """API view to retrieve or delete a specific task."""
+
     lookup_field = "uuid"
-    serializer_class = EventizerTaskSerializer
-    pagination_class = EventizerPaginator
 
-
-class EventizerJobList(generics.ListAPIView):
-    serializer_class = EventizerJobListSerializer
-    pagination_class = EventizerPaginator
+    def get_serializer_class(self):
+        task_type = self.kwargs["task_type"]
+        try:
+            return TASKS_SERIALIZERS[task_type]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
 
     def get_queryset(self):
+        task_type = self.kwargs["task_type"]
+        try:
+            task_model = get_registered_task_model(task_type)[0]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+        return task_model.objects.all()
+
+
+class RescheduleTask(views.APIView):
+    """API view to reschedule a specific task."""
+
+    def post(self, request, *args, **kwargs):
+        task_id = self.kwargs["uuid"]
+        try:
+            reschedule_task(task_id)
+        except NotFoundError:
+            return response.Response(
+                {"detail": f"Task with id '{task_id}' not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        data = [f"Task '{task_id}' rescheduled."]
+        return response.Response(data, status=200)
+
+
+class CancelTask(views.APIView):
+    """API view to cancel a specific task."""
+
+    def post(self, request, *args, **kwargs):
+        task_id = self.kwargs["uuid"]
+
+        cancel_task(task_id)
+
+        data = [f"Task '{task_id}' cancelled."]
+        return response.Response(data, status=200)
+
+
+class ListJobs(generics.ListAPIView):
+    """API view to list all jobs paginated for a specific task."""
+
+    serializer_class = JobSummarySerializer
+    pagination_class = SchedulerPaginator
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = [
+        "scheduled_at",
+        "last_run",
+    ]
+
+    def get_queryset(self):
+        task_type = self.kwargs["task_type"]
         task_id = self.kwargs["task_id"]
-        queryset = (
-            get_registered_task_model("eventizer")[1]
-            .objects.filter(task__uuid=task_id)
-            .order_by("-scheduled_at")
-        )
+        try:
+            job_model = get_registered_task_model(task_type)[1]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+
+        queryset = job_model.objects.filter(task__uuid=task_id).order_by("-job_num")
+
         status = self.request.query_params.get("status")
         if status is not None:
             queryset = queryset.filter(status=status)
         return queryset
 
 
-class EventizerJobDetail(generics.RetrieveAPIView):
+class JobDetail(generics.RetrieveAPIView):
+    """API view to retrieve detailed information about a specific job task."""
+
     lookup_field = "uuid"
-    serializer_class = EventizerJobSerializer
-    pagination_class = EventizerPaginator
+    serializer_class = JobSerializer
+    pagination_class = SchedulerPaginator
 
     def get_queryset(self):
+        task_type = self.kwargs["task_type"]
         task_id = self.kwargs["task_id"]
-        return get_registered_task_model("eventizer")[1].objects.filter(task__uuid=task_id)
+        try:
+            job_model = get_registered_task_model(task_type)[1]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+
+        return job_model.objects.filter(task__uuid=task_id)
 
 
-class EventizerJobLogs(generics.RetrieveAPIView):
+class JobLogs(generics.RetrieveAPIView):
+    """API view to retrieve log entries for a specific job task."""
+
     lookup_field = "uuid"
-    serializer_class = EventizerJobLogsSerializer
-    pagination_class = EventizerPaginator
+    serializer_class = JobLogsSerializer
 
     def get_queryset(self):
+        task_type = self.kwargs["task_type"]
         task_id = self.kwargs["task_id"]
-        return get_registered_task_model("eventizer")[1].objects.filter(task__uuid=task_id)
+        try:
+            job_model = get_registered_task_model(task_type)[1]
+        except KeyError:
+            raise ValidationError(f"Unknown task type: '{task_type}'")
+
+        return job_model.objects.filter(task__uuid=task_id)

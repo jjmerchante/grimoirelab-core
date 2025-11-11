@@ -179,6 +179,15 @@ and store it into SortingHat database.
 grimoirelab run ushers
 ```
 
+### Run SortingHat workers
+
+Run the SortingHat workers that will run jobs related to identities management.
+Like affiliate, unify, genderize, recommendations and identities importers.
+
+```
+grimoirelab run sortinghat-workers
+```
+
 #### Run the backend API
 
 Run the backend API server that will provide a REST API to manage the

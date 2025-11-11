@@ -120,6 +120,9 @@ class TestTaskRegistration(GrimoireLabTestCase):
     def setUp(self):
         GRIMOIRELAB_TASK_MODELS.clear()
 
+    def tearDown(self):
+        GRIMOIRELAB_TASK_MODELS.clear()
+
     def test_register_task(self):
         """Task is correctly registered and job class is created"""
 

@@ -21,7 +21,19 @@ from __future__ import annotations
 import typing
 
 from django.conf import settings
-from django.db.models import CharField
+from django.contrib.auth import get_user_model
+from django.db.models import CharField, TextChoices
+from sortinghat.core.importer.backend import find_import_identities_backends
+from sortinghat.core.jobs import (
+    recommend_affiliations,
+    recommend_matches,
+    recommend_gender,
+    affiliate,
+    unify,
+    genderize,
+    import_identities,
+)
+from sortinghat.core.context import SortingHatContext
 
 from ...scheduler.models import (
     SchedulerStatus,
@@ -176,4 +188,111 @@ class EventizerTask(Task):
         return _on_failure_callback(*args, **kwargs)
 
 
+class SortingHatTask(Task):
+    """Base class for SortingHat tasks."""
+
+    class JobType(TextChoices):
+        AFFILIATE = "affiliate", "Affiliate"
+        UNIFY = "unify", "Unify"
+        GENDERIZE = "genderize", "Genderize"
+        RECOMMEND_AFFILIATIONS = "recommend_affiliations", "Recommend affiliations"
+        RECOMMEND_MATCHES = "recommend_matches", "Recommend matches"
+        RECOMMEND_GENDER = "recommend_gender", "Recommend gender"
+        IMPORT_IDENTITIES = "import_identities", "Import identities"
+
+        @property
+        def func(self):
+            return {
+                self.AFFILIATE: affiliate,
+                self.UNIFY: unify,
+                self.GENDERIZE: genderize,
+                self.RECOMMEND_AFFILIATIONS: recommend_affiliations,
+                self.RECOMMEND_MATCHES: recommend_matches,
+                self.RECOMMEND_GENDER: recommend_gender,
+                self.IMPORT_IDENTITIES: import_identities,
+            }[self]
+
+    job_type = CharField(max_length=MAX_SIZE_CHAR_FIELD, choices=JobType)
+
+    TASK_TYPE = "sortinghat"
+
+    @classmethod
+    def create_task(
+        cls,
+        task_args: dict[str, Any],
+        job_interval: int,
+        job_max_retries: int,
+        burst: bool = False,
+        *args,
+        **kwargs,
+    ) -> Self:
+        """Create a new SortingHat task."""
+
+        task = super().create_task(
+            task_args, job_interval, job_max_retries, burst=burst, *args, **kwargs
+        )
+        try:
+            job_type = kwargs["job_type"]
+            task.job_type = cls.JobType(job_type).value
+        except KeyError:
+            raise ValueError(f"Invalid job type: {kwargs.get('job_type')}")
+
+        task.save()
+
+        return task
+
+    def prepare_job_parameters(self):
+        """Generate the parameters for a new job."""
+
+        system_user = get_user_model().objects.get(username=settings.SYSTEM_BOT_USER)
+        ctx = SortingHatContext(user=system_user, job_id=None, tenant=None)
+
+        job_args = {"ctx": ctx, **self.task_args}
+
+        # Detect if it's an importer backend and uses 'from_date'
+        if self.job_type == SortingHatTask.JobType.IMPORT_IDENTITIES:
+            backends = find_import_identities_backends()
+            try:
+                backend_name = self.task_args["backend_name"]
+                backend_args = backends[backend_name]["args"]
+            except KeyError:
+                backend_args = {}
+            if "from_date" in backend_args:
+                last_job = (
+                    self.jobs.order_by("job_num").filter(status=SchedulerStatus.COMPLETED).last()
+                )
+                job_args["from_date"] = last_job.started_at.isoformat()
+
+        # Job type must be defined in job_args to determine the job function
+        job_args["job_type"] = self.job_type
+
+        return job_args
+
+    def can_be_retried(self):
+        return True
+
+    @property
+    def default_job_queue(self):
+        return settings.GRIMOIRELAB_Q_SORTINGHAT_JOBS
+
+    @staticmethod
+    def job_function(*args, **kwargs):
+        job_type = kwargs.pop("job_type")
+        ctx = kwargs.get("ctx")
+        if ctx and not isinstance(ctx, SortingHatContext):
+            ctx[0] = get_user_model().objects.get(username=ctx[0])
+            kwargs["ctx"] = SortingHatContext(*ctx)
+
+        return SortingHatTask.JobType(job_type).func(*args, **kwargs)
+
+    @staticmethod
+    def on_success_callback(*args, **kwargs):
+        return _on_success_callback(*args, **kwargs)
+
+    @staticmethod
+    def on_failure_callback(*args, **kwargs):
+        return _on_failure_callback(*args, **kwargs)
+
+
 register_task_model(EventizerTask.TASK_TYPE, EventizerTask)
+register_task_model(SortingHatTask.TASK_TYPE, SortingHatTask)

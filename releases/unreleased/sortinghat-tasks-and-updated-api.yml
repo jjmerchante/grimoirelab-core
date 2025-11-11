@@ -1,0 +1,8 @@
+---
+title: SortingHat tasks and updated API
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Include SortingHat tasks in GrimoireLab scheduler and extend the
+  API to support them alongside eventizer tasks.

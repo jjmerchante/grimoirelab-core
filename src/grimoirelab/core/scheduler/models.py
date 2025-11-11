@@ -22,6 +22,7 @@ import typing
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import (
     BooleanField,
@@ -224,6 +225,15 @@ class JobResultEncoder(DjangoJSONEncoder):
             return super().default(o)
 
 
+class JobArgsEncoder(DjangoJSONEncoder):
+    """JSON encoder for job arguments."""
+
+    def default(self, o):
+        if isinstance(o, User):
+            return o.username
+        return DjangoJSONEncoder.default(self, o)
+
+
 class Job(BaseModel):
     """Base class for jobs executed by the scheduler.
 
@@ -243,7 +253,7 @@ class Job(BaseModel):
     # Job data
     uuid = CharField(max_length=MAX_SIZE_CHAR_INDEX, unique=True)
     job_num = PositiveIntegerField(null=False)
-    job_args = JSONField(null=True, default=None)
+    job_args = JSONField(encoder=JobArgsEncoder, null=True, default=None)
 
     # Status
     status = IntegerField(choices=SchedulerStatus.choices, default=SchedulerStatus.ENQUEUED)
@@ -362,7 +372,7 @@ def get_registered_task_model(task_type: str) -> tuple[type[Task], type[Job]]:
     return GRIMOIRELAB_TASK_MODELS[task_type]
 
 
-def get_all_registered_task_models() -> Iterator[type[Task], type[Job]]:
+def get_all_registered_task_models() -> Iterator[tuple[type[Task], type[Job]]]:
     """Return all registered task models.
 
     :returns: an iterator with all registered task classes and

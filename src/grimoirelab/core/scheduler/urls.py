@@ -16,19 +16,28 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from django.urls import path, re_path
+from django.urls import path
 
 from . import api
-from . import views
 
 
-urlpatterns = [
-    re_path(r"^add_task", views.add_task),
-    re_path(r"^reschedule_task", views.reschedule_task),
-    re_path(r"^cancel_task", views.cancel_task),
-    path("tasks/", api.EventizerTaskList.as_view()),
-    path("tasks/<str:uuid>/", api.EventizerTaskDetail.as_view()),
-    path("tasks/<str:task_id>/jobs/", api.EventizerJobList.as_view()),
-    path("tasks/<str:task_id>/jobs/<str:uuid>/", api.EventizerJobDetail.as_view()),
-    path("tasks/<str:task_id>/jobs/<str:uuid>/logs/", api.EventizerJobLogs.as_view()),
+tasks_urlpatterns = [
+    path("", api.ListTaskTypes.as_view(), name="task-types"),
+    path("<str:task_type>/", api.ListCreateTasks.as_view(), name="tasks"),
+    path("<str:task_type>/<str:uuid>/", api.RetrieveDestroyTask.as_view(), name="task-detail"),
+    path(
+        "<str:task_type>/<str:uuid>/reschedule/",
+        api.RescheduleTask.as_view(),
+        name="task-reschedule",
+    ),
+    path("<str:task_type>/<str:uuid>/cancel/", api.CancelTask.as_view(), name="task-cancel"),
+    path("<str:task_type>/<str:task_id>/jobs/", api.ListJobs.as_view(), name="jobs"),
+    path(
+        "<str:task_type>/<str:task_id>/jobs/<str:uuid>/", api.JobDetail.as_view(), name="job-detail"
+    ),
+    path(
+        "<str:task_type>/<str:task_id>/jobs/<str:uuid>/logs/",
+        api.JobLogs.as_view(),
+        name="job-logs",
+    ),
 ]

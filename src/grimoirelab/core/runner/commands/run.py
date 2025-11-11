@@ -209,6 +209,36 @@ def eventizers(workers: int, verbose: bool, burst: bool):
     )
 
 
+@run.command()
+@worker_options(workers=5)
+def sortinghat_workers(workers: int, verbose: bool, burst: bool):
+    """Start a pool of SortingHat workers.
+
+    The workers on the pool will process SortingHat related tasks.
+
+    The number of workers running in the pool can be defined with the
+    parameter '--workers'.
+
+    To enable verbose mode, use the '--verbose' flag.
+
+    If the '--burst' flag is enabled, the pool will process all the events
+    and exit.
+
+    Workers get jobs from the GRIMOIRELAB_Q_SORTINGHAT_JOBS queue defined
+    in the configuration file.
+    """
+    _wait_redis_ready()
+    _wait_database_ready()
+
+    django.core.management.call_command(
+        "rqworker-pool",
+        settings.GRIMOIRELAB_Q_SORTINGHAT_JOBS,
+        num_workers=workers,
+        burst=burst,
+        verbosity=3 if verbose else 1,
+    )
+
+
 def _sleep_backoff(attempt: int) -> None:
     """Sleep with exponential backoff"""
 
