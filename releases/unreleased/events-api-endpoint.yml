@@ -1,0 +1,11 @@
+---
+title: Events API endpoint
+category: added
+author: Jose Javier Merchante <jjmerchante@bitergia.com>
+issue: null
+notes: >
+  Add a new API endpoint for retrieving the latest events
+  created. Users can control pagination using parameters
+  like 'from_id', 'to_id', and 'size'. Both 'from_id' and
+  'to_id' accept timestamps in milliseconds corresponding
+  to when each event was created.

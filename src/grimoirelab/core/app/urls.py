@@ -15,6 +15,7 @@ from ..views import api_login
 
 from grimoirelab.core.scheduler.urls import urlpatterns as sched_urlpatterns
 from grimoirelab.core.datasources.urls import ecosystems_urlpatterns
+from grimoirelab.core.events.urls import events_urlpatterns
 
 urlpatterns = [
     path("login", api_login, name="api_login"),
@@ -34,6 +35,8 @@ urlpatterns = [
                         SortingHatGraphQLView.as_view(graphiql=settings.DEBUG, schema=schema)
                     ),
                 ),
+                # Events API
+                path("events/", include(events_urlpatterns)),
             ]
         ),
     ),
